@@ -1,0 +1,4 @@
+<Solution>
+    <Project Path="src/Compuse.Contracts/Compuse.Contracts.csproj" />
+    <Project Path="tests/Compuse.Contracts.Tests/Compuse.Contracts.Tests.csproj" />
+</Solution>
