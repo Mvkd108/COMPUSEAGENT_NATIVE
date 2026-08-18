@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package compuse.v1;
+
+option csharp_namespace = "Compuse.Protocol.V1";
+
+import "google/protobuf/timestamp.proto";
+
+enum OperationOutcome {
+  OPERATION_OUTCOME_UNSPECIFIED = 0;
+  OPERATION_OUTCOME_COMMITTED = 1;
+  OPERATION_OUTCOME_REFUSED = 2;
+  OPERATION_OUTCOME_FAILED = 3;
+  OPERATION_OUTCOME_INDETERMINATE = 4;
+}
+
+enum VerificationEvidenceKind {
+  VERIFICATION_EVIDENCE_KIND_UNSPECIFIED = 0;
+  VERIFICATION_EVIDENCE_KIND_OS_API_RETURN = 1;
+  VERIFICATION_EVIDENCE_KIND_EXTERNAL_SIDE_EFFECT_OBSERVATION = 2;
+  VERIFICATION_EVIDENCE_KIND_DIAGNOSTIC_ARTIFACT = 3;
+}
+
+message RefusalInfo {
+  string code = 1;
+  string message = 2;
+}
+
+message FailureInfo {
+  string code = 1;
+  string message = 2;
+  bool is_transient = 3;
+}
+
+message VerificationEvidence {
+  VerificationEvidenceKind kind = 1;
+  string code = 2;
+  string description = 3;
+  google.protobuf.Timestamp observed_at = 4;
+  optional string artifact_reference = 5;
+}
+
+message OperationResultEnvelope {
+  string correlation_id = 1;
+  OperationOutcome outcome = 2;
+
+  oneof detail {
+    RefusalInfo refusal = 3;
+    FailureInfo failure = 4;
+  }
+
+  repeated VerificationEvidence evidence = 5;
+}

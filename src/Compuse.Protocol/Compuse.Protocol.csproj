@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Compuse.Protocol</RootNamespace>
+        <AssemblyName>Compuse.Protocol</AssemblyName>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Tools">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
+        <Protobuf Include="..\..\proto\compuse\v1\operation_result.proto" GrpcServices="None" />
+    </ItemGroup>
+</Project>

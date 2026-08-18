@@ -1,0 +1,34 @@
+PREPARE MODULE: next bounded slice toward reliable drop_files
+
+Use the COMPUSEAGENT_NATIVE architect/reviewer contract already established.
+
+Inspect the actual repository before writing the prompt. Do not implement
+anything. Do not invent runtime, CLI, native COM, or file-drop code in this
+request.
+
+Current verified state:
+
+- M001 is APPROVED and committed on main as
+  42e5d0ca368939d436f5d0a8cc25d82316dc1bb7.
+- M002 (canonical Protobuf v1 operation-result contract) is implemented and
+  independently reviewed APPROVED in the working tree. Generated C# is not
+  committed. Compuse.Contracts was not modified.
+- Product goal remains a reliable drop_files semantic operation using the
+  correct Windows mechanism, not a mouse gesture.
+- Settled stack remains C#/.NET 10 for contracts, runtime, routing, policy,
+  CLI, diagnostics, and tests; later narrow C++/WinRT for OLE/Shell; Protobuf
+  binary as the canonical external result contract; private versioned C ABI
+  later; Windows 11 x64; no CUA fork.
+
+Constraints for the next module:
+
+- One bounded, decision-complete implementation prompt only.
+- Depend on approved M001/M002 contracts rather than duplicating them.
+- Preserve committed / refused / failed / indeterminate semantics.
+- An OS or API success return must never be treated as proof of an external
+  side effect.
+- Do not include Hyper-V, GUI, cloud, networking, CUA vendoring, or
+  placeholders for later modules.
+- If M002 is still uncommitted, say whether M003 must wait for that commit.
+
+Return a standalone M003 implementation prompt in the established format.
