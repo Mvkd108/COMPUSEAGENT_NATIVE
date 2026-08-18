@@ -1,23 +1,25 @@
 # CompuseAgent Native
 
-CompuseAgent Native is independent Windows software. C# and .NET 10 own contracts, runtime, routing, policy, CLI, diagnostics, and managed tests. A later narrow C++/WinRT component may own justified OLE/Shell operations. This repository currently contains the typed contract foundation and its canonical Protobuf v1 result representation.
+CompuseAgent Native is independent Windows software. C# and .NET 10 own contracts, runtime, routing, policy, CLI, diagnostics, and managed tests. A later narrow C++/WinRT component may own justified OLE/Shell operations. This repository currently contains the typed contract foundation, its canonical Protobuf v1 result representation, and the v1 `drop_files` request contract.
 
 ## Module boundary
 
-M001 establishes the executable contract vocabulary and repository bootstrap. M002 adds the versioned `compuse.v1` Protobuf binary representation of operation results and a lossless, validating mapper onto the M001 types.
+M001 establishes the executable contract vocabulary and repository bootstrap. M002 adds the versioned `compuse.v1` Protobuf binary representation of operation results and a lossless, validating mapper onto the M001 types. M003 adds the managed `drop_files` request types, a separate `compuse.v1` request schema, and a lossless, validating mapper. Invalid requests cannot be constructed or mapped into the domain model.
 
-These modules do **not** implement runtime services, platform integration, file transfer, CLI, GUI, native projects, transports, or placeholders for later work.
+These modules do **not** implement runtime services, platform integration, file transfer execution, CLI, GUI, native projects, transports, or placeholders for later work.
 
-Windows 11 x64 is the initial product platform. `Compuse.Contracts` and `Compuse.Protocol` target `net10.0` with no platform API dependency so later runtime and native projects can own Windows-specific behavior.
+Windows 11 x64 is the initial product platform. `Compuse.Contracts`, `Compuse.Requests`, and `Compuse.Protocol` target `net10.0` with no platform API dependency so later runtime and native projects can own Windows-specific behavior.
 
 ## Settled architecture
 
 - Outcome vocabulary is exactly `committed`, `refused`, `failed`, and `indeterminate`.
 - An OS or API success return is diagnostic evidence only. It is never proof that an external side effect occurred.
 - A `committed` result requires at least one `ExternalSideEffectObservation`.
-- Protobuf binary package `compuse.v1` is the canonical external contract for operation results. M001 JSON mapping exists only to stabilize the four outcome tokens for local typed-contract tests. ProtoJSON is not an external contract.
-- Mapping a parsed Protobuf message into `Compuse.Contracts` does not preserve unknown fields. Rematerializing Protobuf from the domain model therefore drops unknown fields. Unknown fields are tolerated on parse when all known fields are valid.
-- Invalid, unspecified, unknown, or internally inconsistent Protobuf messages are rejected. They are never converted to another outcome.
+- Protobuf binary package `compuse.v1` is the canonical external contract for operation results and `drop_files` requests. M001 JSON mapping exists only to stabilize the four outcome tokens for local typed-contract tests. ProtoJSON is not an external contract.
+- Mapping a parsed Protobuf message into domain types does not preserve unknown fields. Rematerializing Protobuf from the domain model therefore drops unknown fields. Unknown fields are tolerated on parse when all known fields are valid.
+- Invalid, unspecified, unknown, or internally inconsistent Protobuf messages are rejected. They are never converted to another outcome or a guessed request.
+- v1 `drop_files` sources are physical files only. Supported transfer effects are copy and move. Directories, virtual files, and link creation are out of this module.
+- Request paths are absolute Windows paths, lexically normalized without filesystem access or reparse-point resolution. HWND and PID values on an application-surface target are hints, never identity.
 - The future native boundary is a private, versioned C ABI. These modules do not define C ABI details.
 - CUA is independent software. This repository does not copy, vendor, modify, reference, download, or integrate CUA. A later module may consume a pinned external backend solely through its public interface.
 
@@ -43,17 +45,22 @@ Directory.Packages.props
 CompuseAgent.Native.slnx
 README.md
 proto/compuse/v1/operation_result.proto
+proto/compuse/v1/drop_files.proto
 src/Compuse.Contracts/
+src/Compuse.Requests/
 src/Compuse.Protocol/
 tests/Compuse.Contracts.Tests/
+tests/Compuse.Requests.Tests/
 tests/Compuse.Protocol.Tests/
 ```
 
 `CompuseAgent.Native.slnx` contains exactly:
 
 - `src/Compuse.Contracts/Compuse.Contracts.csproj`
+- `src/Compuse.Requests/Compuse.Requests.csproj`
 - `src/Compuse.Protocol/Compuse.Protocol.csproj`
 - `tests/Compuse.Contracts.Tests/Compuse.Contracts.Tests.csproj`
+- `tests/Compuse.Requests.Tests/Compuse.Requests.Tests.csproj`
 - `tests/Compuse.Protocol.Tests/Compuse.Protocol.Tests.csproj`
 
 Build outputs under `bin/`, `obj/`, `.artifacts/`, and `TestResults/` are ignored. All `packages.lock.json` files are tracked. Generated protocol C# is not tracked.
@@ -75,7 +82,16 @@ Build outputs under `bin/`, `obj/`, `.artifacts/`, and `TestResults/` are ignore
 
 ## Protocol mapping
 
-`OperationResultProtoMapper` is the only public mapper. `ToProto` and `FromProto` preserve correlation identity, outcome, typed detail, evidence order, timestamps, transient flags, and artifact-reference presence. Correlation identifiers must be the exact 36-character lowercase GUID `D` form. Protobuf zero/unspecified enums are invalid at the managed boundary. Timestamp nanoseconds must be divisible by 100; sub-tick values are rejected rather than truncated.
+`OperationResultProtoMapper` maps operation results. `DropFilesRequestProtoMapper` maps `drop_files` requests. Each exposes `ToProto` and `FromProto`. Correlation identifiers must be the exact 36-character lowercase GUID `D` form. Protobuf zero/unspecified enums are invalid at the managed boundary. Timestamp nanoseconds must be divisible by 100; sub-tick values are rejected rather than truncated.
+
+## `drop_files` request
+
+A v1 request names one correlation identity, 1 to 1024 unique physical-file sources, a copy or move effect, and exactly one target:
+
+- `FilesystemContainer` — an absolute Windows directory path
+- `ApplicationSurface` — a process image file name plus optional window class, title, HWND hint, and PID hint
+
+Paths are normalized lexically (`/` to `\`, `.` / `..` collapse) without touching the filesystem. Relative paths, device prefixes (`\\?\`, `\\.`, `\??\`), duplicate sources, reserved DOS device names, and zero HWND/PID hints are rejected. An optional UTC deadline is request metadata only; it is not a cancellation token and does not execute anything.
 
 ## Verification
 
@@ -100,12 +116,12 @@ Expected results:
 1. `dotnet --version` prints `10.0.302`.
 2. Git reports a committed `main` branch.
 3. `git rev-parse HEAD` prints the current baseline revision.
-4. Locked restore succeeds for all four projects.
-5. Solution list contains exactly the four projects above.
+4. Locked restore succeeds for all six projects.
+5. Solution list contains exactly the six projects above.
 6. Release build succeeds with 0 warnings and 0 errors.
 7. Format check reports no required changes.
-8. Protocol tests pass at least 36 cases with 0 failed and 0 skipped.
-9. Full solution tests pass at least 116 cases with 0 failed and 0 skipped.
+8. Protocol tests pass at least 63 cases with 0 failed and 0 skipped.
+9. Full solution tests pass at least 156 cases with 0 failed and 0 skipped.
 10. `bin\probe.dll` is ignored (exit `0`). Protocol `packages.lock.json` is not ignored (exit `1`).
 
 If SDK `10.0.302` is unavailable, verification is blocked. Do not roll forward to another SDK.

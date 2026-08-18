@@ -39,3 +39,18 @@ Package `compuse.v1` is the versioned result schema. ProtoJSON is not an
 external contract. Unknown fields are tolerated on parse; mapping into M001
 types does not preserve them. Field and enum numbers in
 `operation_result.proto` are immutable after M002 approval.
+
+## 2026-08-18 — M002 is the committed result-contract baseline
+
+`main` includes M002 at `0d8e66d538d019237268549c80bcdec753b9b9dd`. Existing
+result field and enum numbers remain immutable.
+
+## 2026-08-18 — v1 drop_files request contract is descriptive only
+
+M003 describes one `drop_files` operation without executing it. v1 sources
+are physical files only; effects are copy and move; targets are a filesystem
+container path or an application-surface selector. Paths are absolute and
+lexically normalized without resolving reparse points or touching the
+filesystem. HWND and PID values are optional hints, never identity. Request
+validation failures cannot become operation results.
+

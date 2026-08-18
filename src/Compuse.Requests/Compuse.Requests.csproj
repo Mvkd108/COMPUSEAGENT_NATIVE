@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Compuse.Requests</RootNamespace>
+        <AssemblyName>Compuse.Requests</AssemblyName>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
+    </ItemGroup>
+</Project>

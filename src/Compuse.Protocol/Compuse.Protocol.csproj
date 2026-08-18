@@ -12,6 +12,8 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
+        <ProjectReference Include="..\Compuse.Requests\Compuse.Requests.csproj" />
         <Protobuf Include="..\..\proto\compuse\v1\operation_result.proto" GrpcServices="None" />
+        <Protobuf Include="..\..\proto\compuse\v1\drop_files.proto" GrpcServices="None" />
     </ItemGroup>
 </Project>

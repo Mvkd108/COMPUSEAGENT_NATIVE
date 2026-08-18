@@ -16,25 +16,39 @@ Status: `APPROVED` and committed.
 
 ## M002 — Canonical Protobuf v1 operation-result contract
 
-Status: implemented and independently reviewed as `APPROVED` in the working
-tree. Not committed; the M002 implementation prompt forbade the implementer
-from committing.
+Status: `APPROVED` and committed.
 
+- Revision: `0d8e66d538d019237268549c80bcdec753b9b9dd` on `main`
 - Schema: `proto/compuse/v1/operation_result.proto`, package `compuse.v1`,
   C# namespace `Compuse.Protocol.V1`
 - Mapper: `OperationResultProtoMapper.ToProto` / `FromProto`
 - Packages: Google.Protobuf `3.35.1`, Grpc.Tools `2.83.0` (private),
   MSTest `4.3.3` preserved
 - Generated C# lives only under ignored `obj/` (`OperationResult.cs`)
-- M001 lock files remain byte-for-byte unchanged
-- Independent verification: 36 protocol tests passed; full solution 116 passed
-  / 0 failed / 0 skipped; format 0 files; canonical wire vector
+- Canonical wire vector
   `0a2461626364656630312d323334352d363738392d616263642d6566303132333435363738391004`
+
+## M003 — `drop_files` request contract and canonical request schema
+
+Status: implemented in the working tree. Not independently reviewed. Not
+committed.
+
+- Domain: `Compuse.Requests` (`DropFilesRequest`, physical-file sources, copy
+  and move, filesystem-container and application-surface targets)
+- Schema: `proto/compuse/v1/drop_files.proto`, package `compuse.v1`
+- Mapper: `DropFilesRequestProtoMapper.ToProto` / `FromProto`
+- No filesystem, Win32, discovery, routing, CLI, or native code
+- `Compuse.Contracts` public types were not modified
+- M001 lock files remain unchanged
+- Implementer verification: locked restore, Release 0 warnings, format
+  0 files, 13 request tests, 63 protocol tests, 156 solution tests passed /
+  0 failed / 0 skipped; canonical copy wire vector
+  `0a2461626364656630312d323334352d363738392d616263642d65663031323334353637383912100a0e0a0c433a5c7372635c612e7478741801220a0a080a06433a5c647374`
 
 ## Intentionally absent
 
 No runtime, CLI, native COM, C ABI, transport, GUI, Hyper-V, networking, CUA,
-or `drop_files` implementation.
+or `drop_files` execution.
 
 ## Known operational notes
 

@@ -16,6 +16,12 @@
       },
       "compuse.contracts": {
         "type": "Project"
+      },
+      "compuse.requests": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )"
+        }
       }
     }
   }

@@ -9,5 +9,9 @@ public enum ProtocolContractErrorCode
     InvalidFailure = 5,
     InvalidEvidence = 6,
     InvalidTimestamp = 7,
-    MissingCommitmentEvidence = 8
+    MissingCommitmentEvidence = 8,
+    UnsupportedTransferEffect = 9,
+    InvalidSource = 10,
+    InvalidTarget = 11,
+    InvalidDeadline = 12
 }

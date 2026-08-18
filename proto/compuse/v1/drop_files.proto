@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package compuse.v1;
+
+option csharp_namespace = "Compuse.Protocol.V1";
+
+import "google/protobuf/timestamp.proto";
+
+enum TransferEffect {
+  TRANSFER_EFFECT_UNSPECIFIED = 0;
+  TRANSFER_EFFECT_COPY = 1;
+  TRANSFER_EFFECT_MOVE = 2;
+}
+
+message PhysicalFileSource {
+  string absolute_path = 1;
+}
+
+message SourceItem {
+  oneof identity {
+    PhysicalFileSource physical_file = 1;
+  }
+}
+
+message FilesystemContainerTarget {
+  string absolute_path = 1;
+}
+
+message ApplicationSurfaceTarget {
+  string process_image_name = 1;
+  optional string window_class = 2;
+  optional string window_title = 3;
+  optional uint64 hwnd_hint = 4;
+  optional uint32 process_id_hint = 5;
+}
+
+message TargetSelector {
+  oneof selector {
+    FilesystemContainerTarget filesystem_container = 1;
+    ApplicationSurfaceTarget application_surface = 2;
+  }
+}
+
+message DropFilesRequest {
+  string correlation_id = 1;
+  repeated SourceItem sources = 2;
+  TransferEffect effect = 3;
+  TargetSelector target = 4;
+  optional google.protobuf.Timestamp deadline = 5;
+}
