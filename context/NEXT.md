@@ -1,15 +1,14 @@
 # Next steps
 
-1. Independently review the M003 working tree against the actual diff and
+1. Independently review the M004 working tree against the actual diff and
    rerun verification. Do not treat the implementer report as approval.
-2. After `APPROVED`, commit M003 as a clean follow-up to
-   `0d8e66d538d019237268549c80bcdec753b9b9dd`. Do not include `bin/`, `obj/`,
+2. After `APPROVED`, commit M004 as a clean follow-up to
+   `13e64f4b94adb47c13f131f4441911be4d1b40ab`. Do not include `bin/`, `obj/`,
    or generated protocol C#.
 3. Then prepare the next bounded module:
-   `PREPARE MODULE: M004 — managed operation lifecycle and handler runtime`
+   `PREPARE MODULE: M005 — Windows target identity and capability discovery`
 4. Keep later slices toward reliable `drop_files` behind that architect
    process. Planned later modules, not yet prompted:
-   - M004 managed operation lifecycle and handler runtime
    - M005 Windows target identity and capability discovery
    - M006 deterministic policy and mechanism router
    - M007 private native ABI v1
@@ -18,4 +17,4 @@
    - M011 CLI and structured diagnostics
 
 Do not resume Hyper-V, GUI, cloud, networking, or CUA vendoring. Do not
-implement file transfer in M004.
+implement file transfer, Win32 discovery, or routing in M004.

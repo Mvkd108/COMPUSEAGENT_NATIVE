@@ -54,3 +54,16 @@ lexically normalized without resolving reparse points or touching the
 filesystem. HWND and PID values are optional hints, never identity. Request
 validation failures cannot become operation results.
 
+## 2026-08-18 — Managed runtime owns lifecycle, not commitment
+
+M004 adds `OperationRuntime` as the shared handler kernel. It never
+synthesizes `committed`. Caller cancellation, deadline expiry, and shutdown
+after dispatch are terminal `OperationResult` values, not
+`OperationCanceledException` from `RunAsync`. Deadlines and timeouts use
+`IOperationClock.Delay`; wall-clock `CancelAfter` is forbidden. A request
+deadline is enforced only when the caller passes it explicitly; the kernel
+does not read fields from `TRequest`. Admission refusals do not occupy an
+in-flight slot. The first successful completion wins, including discarding a
+late valid `committed`. Cleanup is LIFO and cannot replace the terminal
+result. `Compuse.Runtime` references only `Compuse.Contracts`.
+

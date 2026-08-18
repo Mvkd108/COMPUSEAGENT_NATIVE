@@ -2,7 +2,9 @@
     <Project Path="src/Compuse.Contracts/Compuse.Contracts.csproj" />
     <Project Path="src/Compuse.Requests/Compuse.Requests.csproj" />
     <Project Path="src/Compuse.Protocol/Compuse.Protocol.csproj" />
+    <Project Path="src/Compuse.Runtime/Compuse.Runtime.csproj" />
     <Project Path="tests/Compuse.Contracts.Tests/Compuse.Contracts.Tests.csproj" />
     <Project Path="tests/Compuse.Requests.Tests/Compuse.Requests.Tests.csproj" />
     <Project Path="tests/Compuse.Protocol.Tests/Compuse.Protocol.Tests.csproj" />
+    <Project Path="tests/Compuse.Runtime.Tests/Compuse.Runtime.Tests.csproj" />
 </Solution>

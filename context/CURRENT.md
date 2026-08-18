@@ -30,25 +30,41 @@ Status: `APPROVED` and committed.
 
 ## M003 — `drop_files` request contract and canonical request schema
 
-Status: implemented in the working tree. Not independently reviewed. Not
-committed.
+Status: committed on `main`. Independent review of that revision is a
+prior-module concern, not an M004 license to change request types.
 
+- Revision: `13e64f4b94adb47c13f131f4441911be4d1b40ab`
 - Domain: `Compuse.Requests` (`DropFilesRequest`, physical-file sources, copy
   and move, filesystem-container and application-surface targets)
 - Schema: `proto/compuse/v1/drop_files.proto`, package `compuse.v1`
 - Mapper: `DropFilesRequestProtoMapper.ToProto` / `FromProto`
 - No filesystem, Win32, discovery, routing, CLI, or native code
 - `Compuse.Contracts` public types were not modified
-- M001 lock files remain unchanged
-- Implementer verification: locked restore, Release 0 warnings, format
-  0 files, 13 request tests, 63 protocol tests, 156 solution tests passed /
-  0 failed / 0 skipped; canonical copy wire vector
+- Canonical copy wire vector
   `0a2461626364656630312d323334352d363738392d616263642d65663031323334353637383912100a0e0a0c433a5c7372635c612e7478741801220a0a080a06433a5c647374`
+
+## M004 — Managed operation lifecycle and handler runtime
+
+Status: implemented in the working tree. Not independently reviewed. Not
+committed.
+
+- Domain: `Compuse.Runtime` (`OperationRuntime`, `IOperationHandler<TRequest>`,
+  `IOperationClock`, `OperationRuntimeOptions`, `RuntimeOutcomeCode`)
+- Accepts an already-validated request, preserves or assigns correlation,
+  dispatches one typed handler, returns exactly one terminal `OperationResult`
+- Kernel never calls `OperationResult.Committed`
+- No Windows APIs, routing, CLI, networking, or `drop_files` execution
+- `Compuse.Runtime` references only `Compuse.Contracts`
+- `DropFilesRequest` is used only from `Compuse.Runtime.Tests`
+- M001–M003 sources and lock files were not modified
+- Implementer verification: locked restore of eight projects, Release
+  0 warnings, format 0 files, 51 runtime tests, 207 solution tests
+  passed / 0 failed / 0 skipped
 
 ## Intentionally absent
 
-No runtime, CLI, native COM, C ABI, transport, GUI, Hyper-V, networking, CUA,
-or `drop_files` execution.
+No CLI, native COM, C ABI, transport, GUI, Hyper-V, networking, CUA, Windows
+target discovery, mechanism routing, or `drop_files` execution.
 
 ## Known operational notes
 
@@ -57,4 +73,4 @@ or `drop_files` execution.
   `C:\Program Files\dotnet\dotnet.exe` (8.x) will fail verification until that
   SDK is on `PATH`.
 - MSTest transitively restores a test-only telemetry extension.
-  `Compuse.Contracts` has no package dependencies.
+  `Compuse.Contracts` and `Compuse.Runtime` have no package dependencies.
