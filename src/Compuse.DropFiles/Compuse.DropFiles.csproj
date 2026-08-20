@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.DropFiles</RootNamespace>
+        <AssemblyName>Compuse.DropFiles</AssemblyName>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
+        <ProjectReference Include="..\Compuse.Discovery\Compuse.Discovery.csproj" />
+        <ProjectReference Include="..\Compuse.Filesystem\Compuse.Filesystem.csproj" />
+        <ProjectReference Include="..\Compuse.Requests\Compuse.Requests.csproj" />
+        <ProjectReference Include="..\Compuse.Routing\Compuse.Routing.csproj" />
+        <ProjectReference Include="..\Compuse.Runtime\Compuse.Runtime.csproj" />
+    </ItemGroup>
+</Project>

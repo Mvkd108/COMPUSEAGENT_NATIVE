@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "compuse.contracts": {
+        "type": "Project"
+      },
+      "compuse.discovery": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Requests": "[1.0.0, )"
+        }
+      },
+      "compuse.filesystem": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Discovery": "[1.0.0, )",
+          "Compuse.Routing": "[1.0.0, )"
+        }
+      },
+      "compuse.requests": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )"
+        }
+      },
+      "compuse.routing": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )",
+          "Compuse.Discovery": "[1.0.0, )",
+          "Compuse.Requests": "[1.0.0, )"
+        }
+      },
+      "compuse.runtime": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

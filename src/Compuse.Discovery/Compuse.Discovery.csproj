@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Discovery</RootNamespace>
+        <AssemblyName>Compuse.Discovery</AssemblyName>
+        <OutputType>Library</OutputType>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Compuse.Requests\Compuse.Requests.csproj" />
+    </ItemGroup>
+</Project>

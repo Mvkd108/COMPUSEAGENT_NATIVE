@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Cli</RootNamespace>
+        <AssemblyName>compuse</AssemblyName>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <ProjectReference Include="..\Compuse.DropFiles\Compuse.DropFiles.csproj" />
+        <ProjectReference Include="..\Compuse.Protocol\Compuse.Protocol.csproj" />
+        <ProjectReference Include="..\Compuse.Routing\Compuse.Routing.csproj" />
+        <ProjectReference Include="..\Compuse.Runtime\Compuse.Runtime.csproj" />
+    </ItemGroup>
+</Project>

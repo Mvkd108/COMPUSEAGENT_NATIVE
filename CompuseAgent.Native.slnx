@@ -3,8 +3,18 @@
     <Project Path="src/Compuse.Requests/Compuse.Requests.csproj" />
     <Project Path="src/Compuse.Protocol/Compuse.Protocol.csproj" />
     <Project Path="src/Compuse.Runtime/Compuse.Runtime.csproj" />
+    <Project Path="src/Compuse.Discovery/Compuse.Discovery.csproj" />
+    <Project Path="src/Compuse.Routing/Compuse.Routing.csproj" />
+    <Project Path="src/Compuse.Filesystem/Compuse.Filesystem.csproj" />
+    <Project Path="src/Compuse.DropFiles/Compuse.DropFiles.csproj" />
+    <Project Path="src/Compuse.Cli/Compuse.Cli.csproj" />
     <Project Path="tests/Compuse.Contracts.Tests/Compuse.Contracts.Tests.csproj" />
     <Project Path="tests/Compuse.Requests.Tests/Compuse.Requests.Tests.csproj" />
     <Project Path="tests/Compuse.Protocol.Tests/Compuse.Protocol.Tests.csproj" />
     <Project Path="tests/Compuse.Runtime.Tests/Compuse.Runtime.Tests.csproj" />
+    <Project Path="tests/Compuse.Discovery.Tests/Compuse.Discovery.Tests.csproj" />
+    <Project Path="tests/Compuse.Routing.Tests/Compuse.Routing.Tests.csproj" />
+    <Project Path="tests/Compuse.Filesystem.Tests/Compuse.Filesystem.Tests.csproj" />
+    <Project Path="tests/Compuse.DropFiles.Tests/Compuse.DropFiles.Tests.csproj" />
+    <Project Path="tests/Compuse.Cli.Tests/Compuse.Cli.Tests.csproj" />
 </Solution>

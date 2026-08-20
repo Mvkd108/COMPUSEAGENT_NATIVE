@@ -1,20 +1,19 @@
 # Next steps
 
-1. Independently review the M004 working tree against the actual diff and
-   rerun verification. Do not treat the implementer report as approval.
-2. After `APPROVED`, commit M004 as a clean follow-up to
-   `13e64f4b94adb47c13f131f4441911be4d1b40ab`. Do not include `bin/`, `obj/`,
-   or generated protocol C#.
-3. Then prepare the next bounded module:
-   `PREPARE MODULE: M005 — Windows target identity and capability discovery`
-4. Keep later slices toward reliable `drop_files` behind that architect
-   process. Planned later modules, not yet prompted:
-   - M005 Windows target identity and capability discovery
-   - M006 deterministic policy and mechanism router
-   - M007 private native ABI v1
-   - M008/M009 transfer backends with real verification
-   - M010 integrated `drop_files` orchestration
-   - M011 CLI and structured diagnostics
+1. Review the Track A diff on `cursor/track-a-filesystem-prototype` and rerun
+   locked restore, Release build, format, and full tests.
+2. When explicitly requested, commit Track A and merge local `main` (M004
+   `56b35fc`) plus Track A to the remote.
+3. After Track A is the committed baseline, run the OLE spike documented in
+   `context/OLE-IDROPTARGET-SPIKE.md`. Do not start M007 or M009 until that
+   spike proves a documented no-pointer `IDropTarget` path.
+4. Remaining original-queue work after the spike:
+   - Full window identity discovery (the rest of M005)
+   - M007 private native ABI only if managed COM is insufficient
+   - M009 OLE application-drop backend and instrumented target
+   - M012 cancellation, crash, and recovery hardening
+   - M013 release qualification
+   - FINAL integrated-system review
 
-Do not resume Hyper-V, GUI, cloud, networking, or CUA vendoring. Do not
-implement file transfer, Win32 discovery, or routing in M004.
+Do not resume Hyper-V, GUI, cloud, networking, or CUA vendoring. Do not add
+a mouse or focus fallback.

@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "Google.Protobuf": {
+        "type": "Direct",
+        "requested": "[3.35.1, )",
+        "resolved": "3.35.1",
+        "contentHash": "pxtkuXhR8svkvDTQrYew9GZQt6eWhblz/V/WKUFrQgkHYlQPsumJTeF6ppHRJpe6j9ffukkd5lQULiiKaek4xA=="
+      },
+      "compuse.contracts": {
+        "type": "Project"
+      },
+      "compuse.discovery": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Requests": "[1.0.0, )"
+        }
+      },
+      "compuse.dropfiles": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )",
+          "Compuse.Discovery": "[1.0.0, )",
+          "Compuse.Filesystem": "[1.0.0, )",
+          "Compuse.Requests": "[1.0.0, )",
+          "Compuse.Routing": "[1.0.0, )",
+          "Compuse.Runtime": "[1.0.0, )"
+        }
+      },
+      "compuse.filesystem": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Discovery": "[1.0.0, )",
+          "Compuse.Routing": "[1.0.0, )"
+        }
+      },
+      "compuse.protocol": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )",
+          "Compuse.Requests": "[1.0.0, )",
+          "Google.Protobuf": "[3.35.1, )"
+        }
+      },
+      "compuse.requests": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )"
+        }
+      },
+      "compuse.routing": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )",
+          "Compuse.Discovery": "[1.0.0, )",
+          "Compuse.Requests": "[1.0.0, )"
+        }
+      },
+      "compuse.runtime": {
+        "type": "Project",
+        "dependencies": {
+          "Compuse.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

@@ -1,14 +1,14 @@
 # CompuseAgent Native
 
-CompuseAgent Native is independent Windows software. C# and .NET 10 own contracts, runtime, routing, policy, CLI, diagnostics, and managed tests. A later narrow C++/WinRT component may own justified OLE/Shell operations. This repository currently contains the typed contract foundation, its canonical Protobuf v1 result representation, the v1 `drop_files` request contract, and a managed operation runtime kernel.
+CompuseAgent Native is independent Windows software. C# and .NET 10 own contracts, runtime, routing, policy, CLI, diagnostics, and managed tests. A later narrow C++/WinRT component may own justified OLE/Shell operations. This repository currently contains the typed contract foundation, its canonical Protobuf v1 result representation, the v1 `drop_files` request contract, a managed operation runtime kernel, and a filesystem-first `drop_files` prototype (discovery, routing, `IFileOperation` transfer, orchestration, and CLI).
 
 ## Module boundary
 
 M001 establishes the executable contract vocabulary and repository bootstrap. M002 adds the versioned `compuse.v1` Protobuf binary representation of operation results and a lossless, validating mapper onto the M001 types. M003 adds the managed `drop_files` request types, a separate `compuse.v1` request schema, and a lossless, validating mapper. Invalid requests cannot be constructed or mapped into the domain model. M004 adds `Compuse.Runtime`: a managed kernel that accepts an already-validated request, assigns or preserves a correlation identifier, dispatches a typed async handler, and returns exactly one terminal `OperationResult`.
 
-These modules do **not** implement Windows APIs, mechanism routing, file transfer execution, CLI, GUI, native projects, transports, or placeholders for later work. The runtime kernel never synthesizes `committed`.
+M004 adds `Compuse.Runtime`: a managed kernel that accepts an already-validated request, assigns or preserves a correlation identifier, dispatches a typed async handler, and returns exactly one terminal `OperationResult`. Track A adds filesystem discovery, a deterministic router, an `IFileOperation` backend, `DropFilesHandler`, and the `compuse` CLI. Application-surface targets are refused. The runtime kernel never synthesizes `committed`.
 
-Windows 11 x64 is the initial product platform. `Compuse.Contracts`, `Compuse.Requests`, `Compuse.Protocol`, and `Compuse.Runtime` target `net10.0` with no platform API dependency so later native projects can own Windows-specific behavior.
+Windows 11 x64 is the initial product platform. `Compuse.Contracts`, `Compuse.Requests`, `Compuse.Protocol`, and `Compuse.Runtime` target `net10.0` with no platform API dependency. Track A Windows projects target `net10.0-windows`.
 
 ## Settled architecture
 
@@ -22,7 +22,7 @@ Windows 11 x64 is the initial product platform. `Compuse.Contracts`, `Compuse.Re
 - Request paths are absolute Windows paths, lexically normalized without filesystem access or reparse-point resolution. HWND and PID values on an application-surface target are hints, never identity.
 - The managed runtime owns cancellation, deadline, timeout, exception translation, cleanup, concurrency, and shutdown. Caller cancellation, deadline expiry, and shutdown after dispatch are terminal results, not `OperationCanceledException` from `RunAsync`.
 - Deadlines and timeouts are enforced against an injected `IOperationClock`. The kernel does not use wall-clock `CancelAfter`.
-- The future native boundary is a private, versioned C ABI. These modules do not define C ABI details.
+- The future native boundary is a private, versioned C ABI. Track A does not introduce it. OLE application-drop is gated on `context/OLE-IDROPTARGET-SPIKE.md`.
 - CUA is independent software. This repository does not copy, vendor, modify, reference, download, or integrate CUA. A later module may consume a pinned external backend solely through its public interface.
 
 ## Prerequisites
@@ -52,22 +52,23 @@ src/Compuse.Contracts/
 src/Compuse.Requests/
 src/Compuse.Protocol/
 src/Compuse.Runtime/
+src/Compuse.Discovery/
+src/Compuse.Routing/
+src/Compuse.Filesystem/
+src/Compuse.DropFiles/
+src/Compuse.Cli/
 tests/Compuse.Contracts.Tests/
 tests/Compuse.Requests.Tests/
 tests/Compuse.Protocol.Tests/
 tests/Compuse.Runtime.Tests/
+tests/Compuse.Discovery.Tests/
+tests/Compuse.Routing.Tests/
+tests/Compuse.Filesystem.Tests/
+tests/Compuse.DropFiles.Tests/
+tests/Compuse.Cli.Tests/
 ```
 
-`CompuseAgent.Native.slnx` contains exactly:
-
-- `src/Compuse.Contracts/Compuse.Contracts.csproj`
-- `src/Compuse.Requests/Compuse.Requests.csproj`
-- `src/Compuse.Protocol/Compuse.Protocol.csproj`
-- `src/Compuse.Runtime/Compuse.Runtime.csproj`
-- `tests/Compuse.Contracts.Tests/Compuse.Contracts.Tests.csproj`
-- `tests/Compuse.Requests.Tests/Compuse.Requests.Tests.csproj`
-- `tests/Compuse.Protocol.Tests/Compuse.Protocol.Tests.csproj`
-- `tests/Compuse.Runtime.Tests/Compuse.Runtime.Tests.csproj`
+`CompuseAgent.Native.slnx` contains the four foundation projects, five Track A projects, and their tests (eighteen projects).
 
 Build outputs under `bin/`, `obj/`, `.artifacts/`, and `TestResults/` are ignored. All `packages.lock.json` files are tracked. Generated protocol C# is not tracked.
 
@@ -103,6 +104,18 @@ Paths are normalized lexically (`/` to `\`, `.` / `..` collapse) without touchin
 
 `OperationRuntime` dispatches `IOperationHandler<TRequest>` implementations. It references only `Compuse.Contracts`. Correlation is passed explicitly; the kernel never reads it from `TRequest`. Admission refusals occupy no in-flight slot. After dispatch, the first terminal result wins, including when a later handler return is a valid `committed`. Cleanup runs LIFO after that result is chosen and cannot replace it.
 
+## Filesystem prototype
+
+Track A copies or moves physical files into a filesystem container using Shell `IFileOperation` with UI suppressed. `committed` requires observed destination files (and, for move, observed source removal). Overwrite is refused. Application-surface selectors return `unsupported_target_kind`.
+
+```powershell
+compuse drop-files --copy --to C:\dst C:\src\a.txt
+compuse drop-files --plan --copy --to C:\dst C:\src\a.txt
+compuse drop-files --proto
+```
+
+`--plan` writes the route to stdout and does not mutate files. Execute writes `outcome=` / `correlation=` on stdout (or a Protobuf `OperationResult` envelope with `--proto`). Diagnostics go to stderr. Exit codes: `0` committed or successful plan, `1` invalid request, `2` refused, `3` failed, `4` indeterminate.
+
 ## Verification
 
 Run every command from the repository root. Restore lock files once after changing package versions, then use locked mode.
@@ -126,12 +139,12 @@ Expected results:
 1. `dotnet --version` prints `10.0.302`.
 2. Git reports a committed `main` branch.
 3. `git rev-parse HEAD` prints the current baseline revision.
-4. Locked restore succeeds for all eight projects.
-5. Solution list contains exactly the eight projects above.
+4. Locked restore succeeds for all eighteen projects.
+5. Solution list contains the eighteen projects in `CompuseAgent.Native.slnx`.
 6. Release build succeeds with 0 warnings and 0 errors.
 7. Format check reports no required changes.
 8. Runtime tests pass at least 51 cases with 0 failed and 0 skipped.
-9. Full solution tests pass at least 207 cases with 0 failed and 0 skipped.
+9. Full solution tests pass at least 238 cases with 0 failed and 0 skipped.
 10. `bin\probe.dll` is ignored (exit `0`). Runtime `packages.lock.json` is not ignored (exit `1`).
 
 If SDK `10.0.302` is unavailable, verification is blocked. Do not roll forward to another SDK.

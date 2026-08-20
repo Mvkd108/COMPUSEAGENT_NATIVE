@@ -7,8 +7,8 @@ consume a pinned external backend solely through its public interface.
 
 ## 2026-08-15 — C# / .NET 10 owns the managed product
 
-Contracts, runtime, routing, policy, CLI, diagnostics, and tests are C# on
-.NET 10. C++/WinRT is reserved for a later narrow OLE/Shell boundary. The
+Contracts, runtime, routing, policy, CLI, diagnostics, and managed tests are C#
+on .NET 10. C++/WinRT is reserved for a later narrow OLE/Shell boundary. The
 earlier C++-throughout plus Go control-plane plan is superseded.
 
 ## 2026-08-15 — Four outcomes, evidence-backed commitment
@@ -67,3 +67,53 @@ in-flight slot. The first successful completion wins, including discarding a
 late valid `committed`. Cleanup is LIFO and cannot replace the terminal
 result. `Compuse.Runtime` references only `Compuse.Contracts`.
 
+## 2026-08-18 — M004 is the committed runtime baseline
+
+`main` includes M004 at `56b35fcab253df3049aa514dd1e0e2c42bc122a1` (merged
+from `cursor/m004-operation-runtime`). Independent review found no defects
+against the M004 prompt. Later modules must not modify `Compuse.Runtime`
+public types unless a replacement prompt says so.
+
+## 2026-08-20 — Track A is filesystem-first
+
+The original M005–M013 sequence put native ABI and OLE on the critical path
+before any file could move. Track A is the prototype path: filesystem
+discovery, deterministic routing, `IFileOperation` transfer, orchestration,
+and a CLI. Application-surface window discovery, M007, and M009 wait until
+Track A works.
+
+See `context/prompts/M005-FS-IMPLEMENTATION-PROMPT.md` and
+`context/prompts/TRACK-A-VERTICAL.md`.
+
+## 2026-08-20 — Filesystem identity tuple
+
+A filesystem object is identified by volume serial plus file index from
+`GetFileInformationByHandle`, with the normalized path as locator only. Opens
+use `FILE_FLAG_OPEN_REPARSE_POINT`. HWND and PID remain hints, never identity.
+
+## 2026-08-20 — Prototype transfer policy
+
+- Overwrite is `refused` (`collision`). No recycle and no rename-on-collision.
+- Multi-file operations are all-or-nothing at preflight.
+- Filesystem destinations always route to the Shell `IFileOperation` backend
+  with UI suppressed. There is no mouse/pointer route.
+- `IFileOperation` runs on an STA thread. Managed COM is sufficient for Track
+  A; a private C ABI is not introduced yet.
+- Application-surface targets refuse with `unsupported_target_kind`.
+
+## 2026-08-20 — v1 refusal code catalog
+
+`unsupported_target_kind`, `source_not_found`, `source_not_file`,
+`source_inaccessible`, `destination_missing`, `destination_not_container`,
+`destination_inaccessible`, `collision`, `integrity_mismatch`,
+`ambiguous_target`, `verification_unavailable`, `stale_identity`.
+
+Codes remain open strings on `RefusalInfo`; this catalog is the Track A
+vocabulary so callers can branch without guessing.
+
+## 2026-08-20 — OLE and native ABI remain gated
+
+Do not implement M007 or M009 until the spike in
+`context/OLE-IDROPTARGET-SPIKE.md` proves a documented no-pointer,
+no-focus `IDropTarget` path with independent observation evidence. If that
+spike fails, application-surface stays refused in v1.
