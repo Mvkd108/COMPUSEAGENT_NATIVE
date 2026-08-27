@@ -1,151 +1,282 @@
 using System.Collections.ObjectModel;
-using System.Runtime.ExceptionServices;
 using Compuse.Discovery;
 using Compuse.Requests;
 using Compuse.Routing;
 
 namespace Compuse.Filesystem;
 
-public sealed class FilesystemTransferBackend
+public sealed class FilesystemTransferBackend : ITransferBackend
 {
     private readonly IFilesystemDiscovery _discovery;
+    private readonly IShellOperationFactory _factory;
 
     public FilesystemTransferBackend(IFilesystemDiscovery discovery)
+        : this(discovery, NativeShellOperationFactory.Instance)
     {
-        ArgumentNullException.ThrowIfNull(discovery);
-        _discovery = discovery;
     }
 
-    public TransferExecution Execute(ExecutionPlan plan, CancellationToken cancellationToken)
+    internal FilesystemTransferBackend(IFilesystemDiscovery discovery, IShellOperationFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+        ArgumentNullException.ThrowIfNull(factory);
+        _discovery = discovery;
+        _factory = factory;
+    }
+
+    public ValueTask<TransferExecution> ExecuteAsync(ExecutionPlan plan, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        cancellationToken.ThrowIfCancellationRequested();
         if (!string.Equals(plan.BackendId, ExecutionPlan.FilesystemBackendId, StringComparison.Ordinal))
         {
             throw new ArgumentException("Only the filesystem backend can execute this plan.", nameof(plan));
         }
 
-        return Sta.Run(() => ExecuteSta(plan, cancellationToken));
+        TaskCompletionSource<TransferExecution> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Thread thread = new(static state =>
+        {
+            StaWork work = (StaWork)state!;
+            try
+            {
+                work.Completion.SetResult(work.Backend.ExecuteSta(work.Plan, work.CancellationToken));
+            }
+            catch (Exception ex)
+            {
+                work.Completion.SetException(ex);
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = false;
+        thread.Name = "compuse-ifileoperation";
+        thread.Start(new StaWork(this, plan, completion, cancellationToken));
+        return new ValueTask<TransferExecution>(completion.Task);
     }
 
     private TransferExecution ExecuteSta(ExecutionPlan plan, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        List<object> com = [];
+        IShellOperation? operation = null;
         int hresult = 0;
         bool aborted = false;
+        bool performed = false;
+        uint adviseCookie = 0;
+        bool advised = false;
         try
         {
-            ShellNative.IFileOperation operation = (ShellNative.IFileOperation)new ShellNative.FileOperationCoclass();
-            com.Add(operation);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Finish(ShellNative.Abort, aborted: true, plan);
+            }
+
+            operation = _factory.Create();
+            CancellationProgressSink sink = new(cancellationToken);
+            int advise = operation.Advise(sink, out adviseCookie);
+            if (advise < 0)
+            {
+                return Finish(advise, aborted: false, plan);
+            }
+
+            advised = true;
             hresult = operation.SetOperationFlags(ShellNative.OperationFlags);
             if (hresult < 0)
             {
-                return Finish(hresult, aborted: false, plan, cancellationToken);
+                return Finish(hresult, aborted: false, plan);
             }
 
-            int createDest = ShellNative.SHCreateItemFromParsingName(
+            int createDest = operation.CreateItemFromParsingName(
                 plan.DestinationIdentity.NormalizedPath,
-                nint.Zero,
-                ShellNative.ShellItemIid,
-                out ShellNative.IShellItem destinationFolder);
-            if (createDest < 0)
+                out ShellNative.IShellItem? destinationFolder);
+            if (createDest < 0 || destinationFolder is null)
             {
-                return Finish(createDest, aborted: false, plan, cancellationToken);
+                return Finish(createDest < 0 ? createDest : ShellNative.Abort, aborted: false, plan);
             }
-
-            com.Add(destinationFolder);
 
             for (int index = 0; index < plan.Items.Count; index++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                PlannedItem item = plan.Items[index];
-                int createSource = ShellNative.SHCreateItemFromParsingName(
-                    item.SourcePath,
-                    nint.Zero,
-                    ShellNative.ShellItemIid,
-                    out ShellNative.IShellItem sourceItem);
-                if (createSource < 0)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    return Finish(createSource, aborted: false, plan, cancellationToken);
+                    return Finish(ShellNative.Abort, aborted: true, plan);
                 }
 
-                com.Add(sourceItem);
+                PlannedItem item = plan.Items[index];
+                int createSource = operation.CreateItemFromParsingName(
+                    item.SourcePath,
+                    out ShellNative.IShellItem? sourceItem);
+                if (createSource < 0 || sourceItem is null)
+                {
+                    return Finish(createSource < 0 ? createSource : ShellNative.Abort, aborted: false, plan);
+                }
+
                 string fileName = Path.GetFileName(item.DestinationPath);
                 int queue = plan.Effect == TransferEffect.Move
-                    ? operation.MoveItem(sourceItem, destinationFolder, fileName, nint.Zero)
-                    : operation.CopyItem(sourceItem, destinationFolder, fileName, nint.Zero);
+                    ? operation.MoveItem(sourceItem, destinationFolder, fileName)
+                    : operation.CopyItem(sourceItem, destinationFolder, fileName);
                 if (queue < 0)
                 {
-                    return Finish(queue, aborted: false, plan, cancellationToken);
+                    return Finish(queue, aborted: false, plan);
                 }
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Finish(ShellNative.Abort, aborted: true, plan);
+            }
+
+            performed = true;
             hresult = operation.PerformOperations();
             int abortCode = operation.GetAnyOperationsAborted(out aborted);
             if (hresult >= 0 && abortCode < 0)
             {
                 hresult = abortCode;
             }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                aborted = true;
+            }
+        }
+        catch (OperationCanceledException) when (performed)
+        {
+            hresult = ShellNative.Abort;
+            aborted = true;
         }
         finally
         {
-            for (int index = com.Count - 1; index >= 0; index--)
+            if (advised && operation is not null)
             {
-                ShellNative.Release(com[index]);
+                try
+                {
+                    _ = operation.Unadvise(adviseCookie);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            if (operation is not null)
+            {
+                try
+                {
+                    operation.Release();
+                }
+                catch (Exception)
+                {
+                }
             }
         }
 
-        return Finish(hresult, aborted, plan, CancellationToken.None);
+        return Finish(hresult, aborted, plan);
     }
 
-    private TransferExecution Finish(int hresult, bool aborted, ExecutionPlan plan, CancellationToken cancellationToken)
+    private TransferExecution Finish(int hresult, bool aborted, ExecutionPlan plan)
     {
         List<ItemObservation> observations = new(plan.Items.Count);
         for (int index = 0; index < plan.Items.Count; index++)
         {
             PlannedItem item = plan.Items[index];
-            PathInspection destination = _discovery.Inspect(item.DestinationPath, cancellationToken);
-            PathInspection sourceAfter = _discovery.Inspect(item.SourcePath, cancellationToken);
-            observations.Add(new ItemObservation(item.SourcePath, item.DestinationPath, item.ByteLength, destination, sourceAfter));
+            PathInspection destination = _discovery.Inspect(item.DestinationPath, CancellationToken.None);
+            PathInspection sourceAfter = _discovery.Inspect(item.SourcePath, CancellationToken.None);
+            observations.Add(
+                new ItemObservation(
+                    item.SourcePath,
+                    item.DestinationPath,
+                    item.ByteLength,
+                    destination,
+                    sourceAfter));
         }
 
         return new TransferExecution(hresult, aborted, new ReadOnlyCollection<ItemObservation>(observations.ToArray()));
     }
+
+    private sealed record StaWork(
+        FilesystemTransferBackend Backend,
+        ExecutionPlan Plan,
+        TaskCompletionSource<TransferExecution> Completion,
+        CancellationToken CancellationToken);
 }
 
-internal static class Sta
+internal interface IShellOperationFactory
 {
-    internal static T Run<T>(Func<T> func)
+    public IShellOperation Create();
+}
+
+internal interface IShellOperation
+{
+    public int Advise(ShellNative.IFileOperationProgressSink sink, out uint cookie);
+
+    public int Unadvise(uint cookie);
+
+    public int SetOperationFlags(uint flags);
+
+    public int CreateItemFromParsingName(string path, out ShellNative.IShellItem? item);
+
+    public int CopyItem(ShellNative.IShellItem source, ShellNative.IShellItem destinationFolder, string fileName);
+
+    public int MoveItem(ShellNative.IShellItem source, ShellNative.IShellItem destinationFolder, string fileName);
+
+    public int PerformOperations();
+
+    public int GetAnyOperationsAborted(out bool aborted);
+
+    public void Release();
+}
+
+internal sealed class NativeShellOperationFactory : IShellOperationFactory
+{
+    internal static NativeShellOperationFactory Instance { get; } = new();
+
+    public IShellOperation Create() => new NativeShellOperation();
+}
+
+internal sealed class NativeShellOperation : IShellOperation
+{
+    private readonly ShellNative.IFileOperation _operation;
+    private readonly List<object> _com = [];
+
+    internal NativeShellOperation()
     {
-        ArgumentNullException.ThrowIfNull(func);
-        if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+        _operation = (ShellNative.IFileOperation)new ShellNative.FileOperationCoclass();
+        _com.Add(_operation);
+    }
+
+    public int Advise(ShellNative.IFileOperationProgressSink sink, out uint cookie) =>
+        _operation.Advise(sink, out cookie);
+
+    public int Unadvise(uint cookie) => _operation.Unadvise(cookie);
+
+    public int SetOperationFlags(uint flags) => _operation.SetOperationFlags(flags);
+
+    public int CreateItemFromParsingName(string path, out ShellNative.IShellItem? item)
+    {
+        int hresult = ShellNative.SHCreateItemFromParsingName(
+            path,
+            nint.Zero,
+            ShellNative.ShellItemIid,
+            out ShellNative.IShellItem created);
+        item = created;
+        if (hresult >= 0)
         {
-            return func();
+            _com.Add(created);
         }
 
-        T? result = default;
-        Exception? error = null;
-        Thread thread = new(() =>
+        return hresult;
+    }
+
+    public int CopyItem(ShellNative.IShellItem source, ShellNative.IShellItem destinationFolder, string fileName) =>
+        _operation.CopyItem(source, destinationFolder, fileName, nint.Zero);
+
+    public int MoveItem(ShellNative.IShellItem source, ShellNative.IShellItem destinationFolder, string fileName) =>
+        _operation.MoveItem(source, destinationFolder, fileName, nint.Zero);
+
+    public int PerformOperations() => _operation.PerformOperations();
+
+    public int GetAnyOperationsAborted(out bool aborted) => _operation.GetAnyOperationsAborted(out aborted);
+
+    public void Release()
+    {
+        for (int index = _com.Count - 1; index >= 0; index--)
         {
-            try
-            {
-                result = func();
-            }
-            catch (Exception ex)
-            {
-                error = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-        if (error is not null)
-        {
-            ExceptionDispatchInfo.Capture(error).Throw();
+            ShellNative.Release(_com[index]);
         }
 
-        return result!;
+        _com.Clear();
     }
 }

@@ -76,7 +76,7 @@ public static class CliApplication
         OperationResult result = await runtime.RunAsync(
             request,
             request.CorrelationId,
-            request.DeadlineUtc,
+            parsed.DeadlineUtc ?? request.DeadlineUtc,
             cancellationToken);
         WriteResult(stdout, stderr, result, parsed.Proto);
         return result.Outcome switch
@@ -92,10 +92,12 @@ public static class CliApplication
     public static string HelpText() =>
         """
         Usage:
-          compuse drop-files --copy|--move --to <dir> [--plan] [--correlation <guid>] <file>...
-          compuse drop-files --proto [--plan]
+          compuse drop-files --copy|--move --to <dir> [--plan] [--timeout <seconds>] [--correlation <guid>] <file>...
+          compuse drop-files --proto [--plan] [--timeout <seconds>]
 
-        Outcomes are written to stdout. Diagnostics are written to stderr.
+        Source and destination paths may be relative; they are resolved against the current directory.
+        Outcomes are written to stdout as key=value lines, including evidence after execute.
+        Diagnostics are written to stderr.
         """ + Environment.NewLine;
 
     private static void WritePlan(Stream stdout, TextWriter stderr, RouteDecision decision)
@@ -150,8 +152,27 @@ public static class CliApplication
             stderr.WriteLine(result.Failure.Message);
         }
 
+        for (int index = 0; index < result.Evidence.Count; index++)
+        {
+            VerificationEvidence item = result.Evidence[index];
+            writer.WriteLine($"evidence={KindToken(item.Kind)}:{item.Code}");
+            if (item.ArtifactReference is not null)
+            {
+                writer.WriteLine($"artifact={item.ArtifactReference}");
+            }
+        }
+
         writer.Flush();
     }
+
+    private static string KindToken(VerificationEvidenceKind kind) =>
+        kind switch
+        {
+            VerificationEvidenceKind.OsApiReturn => "os_api_return",
+            VerificationEvidenceKind.ExternalSideEffectObservation => "external_side_effect_observation",
+            VerificationEvidenceKind.DiagnosticArtifact => "diagnostic_artifact",
+            _ => "unknown"
+        };
 
     private static byte[] ReadAll(Stream stdin)
     {

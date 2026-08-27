@@ -101,6 +101,28 @@ use `FILE_FLAG_OPEN_REPARSE_POINT`. HWND and PID remain hints, never identity.
   A; a private C ABI is not introduced yet.
 - Application-surface targets refuse with `unsupported_target_kind`.
 
+## 2026-08-20 — CLI is the Track A product surface
+
+The filesystem prototype is usable from `compuse` without requiring already-
+absolute paths. The CLI resolves relative source and `--to` paths with
+`Path.GetFullPath` against the current directory, then constructs M003
+request types. That resolution is CLI-only; request types still forbid
+relative paths.
+
+Execute stdout stays key=value and adds `evidence=<kind>:<code>` plus
+`artifact=` when an evidence item carries a path. `--timeout <seconds>`
+(1–86400) is passed to `OperationRuntime.RunAsync` as the deadline.
+
+## 2026-08-20 — Cancel-safe IFileOperation
+
+`IFileOperation` runs on a foreground STA thread so process exit does not
+kill COM mid-copy. A managed `IFileOperationProgressSink` returns `E_ABORT`
+when the cancellation token is signaled. After `PerformOperations` starts,
+the backend always inspects destinations with an uncancellable token.
+`committed` still requires independent observation; a length mismatch is
+`indeterminate` with `integrity_mismatch` evidence. Cancellation before
+mutation does not copy or move files.
+
 ## 2026-08-20 — v1 refusal code catalog
 
 `unsupported_target_kind`, `source_not_found`, `source_not_file`,
@@ -117,3 +139,15 @@ Do not implement M007 or M009 until the spike in
 `context/OLE-IDROPTARGET-SPIKE.md` proves a documented no-pointer,
 no-focus `IDropTarget` path with independent observation evidence. If that
 spike fails, application-surface stays refused in v1.
+
+## 2026-08-22 — M012 async Shell execution and least-privilege probe
+
+`ITransferBackend.ExecuteAsync` returns an incomplete task. `IFileOperation`
+always runs on a dedicated foreground STA, including when the caller is
+already STA. The caller path does not `Join`, `.Result`, or `.Wait()`.
+Post-dispatch deadline and cancellation can complete the runtime result
+while the STA finishes and releases COM. Failed `Advise` skips
+`SetOperationFlags`, Shell-item creation, queue, and perform, and is never
+unadvised. Successful `Advise` is paired with exactly one `Unadvise`.
+Destination add-file discovery requests exactly `FILE_ADD_FILE` and creates
+no probe child. M001–M004 public types were not changed.

@@ -110,11 +110,13 @@ Track A copies or moves physical files into a filesystem container using Shell `
 
 ```powershell
 compuse drop-files --copy --to C:\dst C:\src\a.txt
+compuse drop-files --copy --to dst .\a.txt
 compuse drop-files --plan --copy --to C:\dst C:\src\a.txt
+compuse drop-files --copy --timeout 30 --to C:\dst C:\src\a.txt
 compuse drop-files --proto
 ```
 
-`--plan` writes the route to stdout and does not mutate files. Execute writes `outcome=` / `correlation=` on stdout (or a Protobuf `OperationResult` envelope with `--proto`). Diagnostics go to stderr. Exit codes: `0` committed or successful plan, `1` invalid request, `2` refused, `3` failed, `4` indeterminate.
+Relative source and destination paths are resolved against the current directory before the request is constructed. `--plan` writes the route to stdout and does not mutate files. Execute writes `outcome=` / `correlation=` / optional `code=` plus `evidence=` and `artifact=` lines on stdout (or a Protobuf `OperationResult` envelope with `--proto`). Diagnostics go to stderr. Exit codes: `0` committed or successful plan, `1` invalid request, `2` refused, `3` failed, `4` indeterminate. `IFileOperation` runs on a dedicated foreground STA and is awaited asynchronously, so a post-dispatch deadline or Ctrl+C can return `indeterminate` without joining the Shell call. The STA still finishes and releases COM; it is not killed mid-copy.
 
 ## Verification
 
@@ -144,7 +146,7 @@ Expected results:
 6. Release build succeeds with 0 warnings and 0 errors.
 7. Format check reports no required changes.
 8. Runtime tests pass at least 51 cases with 0 failed and 0 skipped.
-9. Full solution tests pass at least 238 cases with 0 failed and 0 skipped.
+9. Full solution tests pass at least 258 cases with 0 failed and 0 skipped.
 10. `bin\probe.dll` is ignored (exit `0`). Runtime `packages.lock.json` is not ignored (exit `1`).
 
 If SDK `10.0.302` is unavailable, verification is blocked. Do not roll forward to another SDK.

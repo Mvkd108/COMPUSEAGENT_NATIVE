@@ -7,9 +7,11 @@ namespace Compuse.Discovery;
 public sealed class WindowsFilesystemDiscovery : IFilesystemDiscovery
 {
     private const uint InspectAccess = NativeMethods.FileReadAttributes;
-    private const uint AddFileAccess = NativeMethods.FileListDirectory | NativeMethods.FileAddFile | NativeMethods.FileReadAttributes;
+    private const uint AddFileAccess = NativeMethods.FileAddFile;
     private const uint ShareAll = NativeMethods.FileShareRead | NativeMethods.FileShareWrite | NativeMethods.FileShareDelete;
     private const uint OpenFlags = NativeMethods.FileFlagBackupSemantics | NativeMethods.FileFlagOpenReparsePoint;
+
+    internal uint LastOpenedAccess { get; private set; }
 
     public PathInspection Inspect(string absolutePath, CancellationToken cancellationToken)
     {
@@ -144,8 +146,9 @@ public sealed class WindowsFilesystemDiscovery : IFilesystemDiscovery
         return new PathInspection(absolutePath, presence, identity: null, byteLength: 0, canAddFiles: false);
     }
 
-    private static bool TryOpen(string absolutePath, uint access, out nint handle, out int error)
+    private bool TryOpen(string absolutePath, uint access, out nint handle, out int error)
     {
+        LastOpenedAccess = access;
         handle = NativeMethods.CreateFileW(
             absolutePath,
             access,
@@ -165,7 +168,7 @@ public sealed class WindowsFilesystemDiscovery : IFilesystemDiscovery
         return true;
     }
 
-    private static bool CanAddFiles(string directoryPath)
+    private bool CanAddFiles(string directoryPath)
     {
         if (!TryOpen(directoryPath, AddFileAccess, out nint handle, out _))
         {

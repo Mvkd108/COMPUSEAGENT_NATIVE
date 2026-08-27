@@ -66,6 +66,80 @@ public sealed class CliApplicationTests
         Assert.AreEqual(CliApplication.ExitOk, exit);
         StringAssert.Contains(stdout, "outcome=committed");
         Assert.AreEqual("payload", System.IO.File.ReadAllText(Path.Combine(destDir, "a.txt")));
+        StringAssert.Contains(stdout, "evidence=external_side_effect_observation:destination_file_observed");
+        StringAssert.Contains(stdout, "artifact=");
+    }
+
+    [TestMethod]
+    public async Task ExecuteMoveWritesCommittedOutcome()
+    {
+        using TempTree tree = new();
+        string source = tree.File("a.txt", "payload");
+        string destDir = tree.Dir("dst");
+        (int exit, string stdout, _) = await Run(
+        [
+            "drop-files",
+            "--move",
+            "--to",
+            destDir,
+            source
+        ]);
+        Assert.AreEqual(CliApplication.ExitOk, exit);
+        StringAssert.Contains(stdout, "outcome=committed");
+        StringAssert.Contains(stdout, "evidence=external_side_effect_observation:source_removed_observed");
+        Assert.IsFalse(System.IO.File.Exists(source));
+        Assert.AreEqual("payload", System.IO.File.ReadAllText(Path.Combine(destDir, "a.txt")));
+    }
+
+    [TestMethod]
+    public async Task RelativePathsAreResolvedAgainstCurrentDirectory()
+    {
+        using TempTree tree = new();
+        _ = tree.File("a.txt", "payload");
+        _ = tree.Dir("dst");
+        string relativeSource = Path.GetRelativePath(Environment.CurrentDirectory, Path.Combine(tree.Root, "a.txt"));
+        string relativeDest = Path.GetRelativePath(Environment.CurrentDirectory, Path.Combine(tree.Root, "dst"));
+        Assert.IsFalse(Path.IsPathRooted(relativeSource));
+        (int exit, string stdout, _) = await Run(
+        [
+            "drop-files",
+            "--copy",
+            "--to",
+            relativeDest,
+            relativeSource
+        ]);
+        Assert.AreEqual(CliApplication.ExitOk, exit);
+        StringAssert.Contains(stdout, "outcome=committed");
+        Assert.AreEqual("payload", System.IO.File.ReadAllText(Path.Combine(tree.Root, "dst", "a.txt")));
+    }
+
+    [TestMethod]
+    public async Task InvalidTimeoutExitsOne()
+    {
+        (int exit, _, string stderr) = await Run(["drop-files", "--copy", "--timeout", "0", "--to", @"C:\dst", @"C:\src\a.txt"]);
+        Assert.AreEqual(CliApplication.ExitInvalid, exit);
+        StringAssert.Contains(stderr, "--timeout");
+    }
+
+    [TestMethod]
+    public async Task CollisionExitsRefused()
+    {
+        using TempTree tree = new();
+        string source = tree.File("a.txt", "new");
+        string destDir = tree.Dir("dst");
+        System.IO.File.WriteAllText(Path.Combine(destDir, "a.txt"), "old");
+        (int exit, string stdout, _) = await Run(
+        [
+            "drop-files",
+            "--copy",
+            "--to",
+            destDir,
+            source
+        ]);
+        Assert.AreEqual(CliApplication.ExitRefused, exit);
+        StringAssert.Contains(stdout, "outcome=refused");
+        StringAssert.Contains(stdout, "code=collision");
+        Assert.AreEqual("old", System.IO.File.ReadAllText(Path.Combine(destDir, "a.txt")));
     }
 
     [TestMethod]

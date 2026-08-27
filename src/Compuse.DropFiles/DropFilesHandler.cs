@@ -10,9 +10,9 @@ namespace Compuse.DropFiles;
 public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
 {
     private readonly IFilesystemDiscovery _discovery;
-    private readonly FilesystemTransferBackend _backend;
+    private readonly ITransferBackend _backend;
 
-    public DropFilesHandler(IFilesystemDiscovery discovery, FilesystemTransferBackend backend)
+    public DropFilesHandler(IFilesystemDiscovery discovery, ITransferBackend backend)
     {
         ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(backend);
@@ -20,27 +20,14 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
         _backend = backend;
     }
 
-    public ValueTask<OperationResult> ExecuteAsync(
+    public async ValueTask<OperationResult> ExecuteAsync(
         DropFilesRequest request,
         OperationExecutionContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(context);
-        return new ValueTask<OperationResult>(Execute(request, context, cancellationToken));
-    }
 
-    public RouteDecision Plan(DropFilesRequest request, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return Route(request, cancellationToken);
-    }
-
-    private OperationResult Execute(
-        DropFilesRequest request,
-        OperationExecutionContext context,
-        CancellationToken cancellationToken)
-    {
         RouteDecision decision = Route(request, cancellationToken);
         if (decision.Refusal is not null)
         {
@@ -54,8 +41,19 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
             return stale;
         }
 
-        TransferExecution execution = _backend.Execute(plan, cancellationToken);
-        return Map(plan, execution, context);
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Cancelled(context);
+        }
+
+        TransferExecution execution = await _backend.ExecuteAsync(plan, cancellationToken).ConfigureAwait(false);
+        return Map(plan, execution, context, cancellationToken);
+    }
+
+    public RouteDecision Plan(DropFilesRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Route(request, cancellationToken);
     }
 
     private RouteDecision Route(DropFilesRequest request, CancellationToken cancellationToken)
@@ -128,7 +126,8 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
     private static OperationResult Map(
         ExecutionPlan plan,
         TransferExecution execution,
-        OperationExecutionContext context)
+        OperationExecutionContext context,
+        CancellationToken cancellationToken)
     {
         DateTimeOffset observedAt = context.Clock.UtcNow;
         List<VerificationEvidence> evidence =
@@ -144,6 +143,7 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
         bool anyDestinationAppeared = false;
         bool allSourcesRemoved = true;
         bool anySourceRemoved = false;
+        bool verificationUnavailable = false;
         for (int index = 0; index < execution.Observations.Count; index++)
         {
             ItemObservation observation = execution.Observations[index];
@@ -154,7 +154,8 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
                     VerificationEvidenceKind.ExternalSideEffectObservation,
                     "destination_file_observed",
                     $"Destination file observed at {observation.DestinationPath} with length {observation.Destination.ByteLength}.",
-                    observedAt));
+                    observedAt,
+                    observation.DestinationPath));
             }
             else
             {
@@ -162,6 +163,22 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
                 if (observation.Destination.Presence == PathPresence.File)
                 {
                     anyDestinationAppeared = true;
+                    evidence.Add(new VerificationEvidence(
+                        VerificationEvidenceKind.DiagnosticArtifact,
+                        DropFilesRefusalCode.IntegrityMismatch,
+                        $"Destination file at {observation.DestinationPath} did not match the planned length {observation.ExpectedLength}.",
+                        observedAt,
+                        observation.DestinationPath));
+                }
+                else if (observation.Destination.Presence == PathPresence.Inaccessible)
+                {
+                    verificationUnavailable = true;
+                    evidence.Add(new VerificationEvidence(
+                        VerificationEvidenceKind.DiagnosticArtifact,
+                        DropFilesRefusalCode.VerificationUnavailable,
+                        $"Destination path {observation.DestinationPath} could not be inspected after transfer.",
+                        observedAt,
+                        observation.DestinationPath));
                 }
             }
 
@@ -172,7 +189,8 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
                     VerificationEvidenceKind.ExternalSideEffectObservation,
                     "source_removed_observed",
                     $"Source path no longer exists at {observation.SourcePath}.",
-                    observedAt));
+                    observedAt,
+                    observation.SourcePath));
             }
             else
             {
@@ -196,6 +214,22 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
             return OperationResult.Indeterminate(context.CorrelationId, evidence);
         }
 
+        if (verificationUnavailable)
+        {
+            return OperationResult.Failed(
+                context.CorrelationId,
+                new FailureInfo(
+                    DropFilesRefusalCode.VerificationUnavailable,
+                    "The transfer result could not be independently verified.",
+                    isTransient: true),
+                evidence);
+        }
+
+        if (cancellationToken.IsCancellationRequested || execution.AnyAborted)
+        {
+            return Cancelled(context, evidence);
+        }
+
         return OperationResult.Failed(
             context.CorrelationId,
             new FailureInfo(
@@ -203,5 +237,18 @@ public sealed class DropFilesHandler : IOperationHandler<DropFilesRequest>
                 $"The filesystem transfer did not complete. HRESULT 0x{execution.ApiHresult:X8}.",
                 isTransient: false),
             evidence);
+    }
+
+    private static OperationResult Cancelled(
+        OperationExecutionContext context,
+        IReadOnlyList<VerificationEvidence>? evidence = null)
+    {
+        List<VerificationEvidence> snapshot = [.. evidence ?? []];
+        snapshot.Add(new VerificationEvidence(
+            VerificationEvidenceKind.DiagnosticArtifact,
+            RuntimeOutcomeCode.Cancelled,
+            "The operation was cancelled.",
+            context.Clock.UtcNow));
+        return OperationResult.Indeterminate(context.CorrelationId, snapshot);
     }
 }

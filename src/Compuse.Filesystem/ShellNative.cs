@@ -4,6 +4,8 @@ namespace Compuse.Filesystem;
 
 internal static class ShellNative
 {
+    internal const int Ok = 0;
+    internal const int Abort = unchecked((int)0x80004004);
     internal const uint FofSilent = 0x0004;
     internal const uint FofNoConfirmation = 0x0010;
     internal const uint FofNoErrorUi = 0x0400;
@@ -47,7 +49,9 @@ internal static class ShellNative
     internal interface IFileOperation
     {
         [PreserveSig]
-        public int Advise(nint pfops, out uint pdwCookie);
+        public int Advise(
+            [MarshalAs(UnmanagedType.Interface)] IFileOperationProgressSink pfops,
+            out uint pdwCookie);
 
         [PreserveSig]
         public int Unadvise(uint dwCookie);
@@ -118,6 +122,98 @@ internal static class ShellNative
 
         [PreserveSig]
         public int GetAnyOperationsAborted([MarshalAs(UnmanagedType.Bool)] out bool pfAnyOperationsAborted);
+    }
+
+    [ComImport]
+    [Guid("04b0f1a7-9490-44bc-96e1-4296a31252e2")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IFileOperationProgressSink
+    {
+        [PreserveSig]
+        public int StartOperations();
+
+        [PreserveSig]
+        public int FinishOperations(int hrResult);
+
+        [PreserveSig]
+        public int PreRenameItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName);
+
+        [PreserveSig]
+        public int PostRenameItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName,
+            int hrRename,
+            IShellItem? psiNewlyCreated);
+
+        [PreserveSig]
+        public int PreMoveItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName);
+
+        [PreserveSig]
+        public int PostMoveItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName,
+            int hrMove,
+            IShellItem? psiNewlyCreated);
+
+        [PreserveSig]
+        public int PreCopyItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName);
+
+        [PreserveSig]
+        public int PostCopyItem(
+            uint dwFlags,
+            IShellItem? psiItem,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName,
+            int hrCopy,
+            IShellItem? psiNewlyCreated);
+
+        [PreserveSig]
+        public int PreDeleteItem(uint dwFlags, IShellItem? psiItem);
+
+        [PreserveSig]
+        public int PostDeleteItem(uint dwFlags, IShellItem? psiItem, int hrDelete);
+
+        [PreserveSig]
+        public int PreNewItem(
+            uint dwFlags,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName);
+
+        [PreserveSig]
+        public int PostNewItem(
+            uint dwFlags,
+            IShellItem? psiDestinationFolder,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszNewName,
+            [MarshalAs(UnmanagedType.LPWStr)] string? pszTemplateName,
+            uint dwFileAttributes,
+            int hrNew,
+            IShellItem? psiNewItem);
+
+        [PreserveSig]
+        public int UpdateProgress(uint iWorkTotal, uint iWorkSoFar);
+
+        [PreserveSig]
+        public int ResetTimer();
+
+        [PreserveSig]
+        public int PauseTimer();
+
+        [PreserveSig]
+        public int ResumeTimer();
     }
 
     [ComImport]

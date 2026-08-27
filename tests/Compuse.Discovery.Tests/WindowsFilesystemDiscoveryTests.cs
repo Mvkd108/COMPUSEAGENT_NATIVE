@@ -106,6 +106,18 @@ public sealed class WindowsFilesystemDiscoveryTests
     }
 
     [TestMethod]
+    public void AddFileProbeRequestsExactlyAddFileAndCreatesNoChild()
+    {
+        using TempTree tree = new();
+        string dir = tree.Dir("writable");
+        PathInspection inspection = _discovery.Inspect(dir, CancellationToken.None);
+        Assert.AreEqual(PathPresence.Directory, inspection.Presence);
+        Assert.IsTrue(inspection.CanAddFiles);
+        Assert.AreEqual(NativeMethods.FileAddFile, _discovery.LastOpenedAccess);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(dir).Length);
+    }
+
+    [TestMethod]
     public void CancellationIsObserved()
     {
         using CancellationTokenSource cts = new();

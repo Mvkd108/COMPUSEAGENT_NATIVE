@@ -8,5 +8,6 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Compuse.Requests\Compuse.Requests.csproj" />
+        <InternalsVisibleTo Include="Compuse.Discovery.Tests" />
     </ItemGroup>
 </Project>

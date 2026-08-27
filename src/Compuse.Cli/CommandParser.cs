@@ -1,3 +1,4 @@
+using System.Globalization;
 using Compuse.Contracts;
 using Compuse.Requests;
 
@@ -10,13 +11,15 @@ internal sealed class ParsedCommand
         bool planOnly,
         bool proto,
         DropFilesRequest? request,
-        string? error)
+        string? error,
+        DateTimeOffset? deadlineUtc = null)
     {
         ShowHelp = showHelp;
         PlanOnly = planOnly;
         Proto = proto;
         Request = request;
         Error = error;
+        DeadlineUtc = deadlineUtc;
     }
 
     public bool ShowHelp { get; }
@@ -28,10 +31,15 @@ internal sealed class ParsedCommand
     public DropFilesRequest? Request { get; }
 
     public string? Error { get; }
+
+    public DateTimeOffset? DeadlineUtc { get; }
 }
 
 internal static class CommandParser
 {
+    private const int MinTimeoutSeconds = 1;
+    private const int MaxTimeoutSeconds = 86400;
+
     internal static ParsedCommand Parse(IReadOnlyList<string> args, byte[]? protoPayload)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -48,6 +56,7 @@ internal static class CommandParser
         bool move = false;
         string? to = null;
         string? correlation = null;
+        int? timeoutSeconds = null;
         List<string> files = [];
         for (int index = 0; index < tokens.Count; index++)
         {
@@ -104,6 +113,25 @@ internal static class CommandParser
                 continue;
             }
 
+            if (token == "--timeout")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --timeout.");
+                }
+
+                string raw = tokens[++index];
+                if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out int seconds)
+                    || seconds < MinTimeoutSeconds
+                    || seconds > MaxTimeoutSeconds)
+                {
+                    return Error("--timeout must be an integer number of seconds between 1 and 86400.");
+                }
+
+                timeoutSeconds = seconds;
+                continue;
+            }
+
             if (token.StartsWith('-'))
             {
                 return Error($"Unknown argument '{token}'.");
@@ -111,6 +139,10 @@ internal static class CommandParser
 
             files.Add(token);
         }
+
+        DateTimeOffset? deadlineUtc = timeoutSeconds is int timeout
+            ? DateTimeOffset.UtcNow.AddSeconds(timeout)
+            : null;
 
         if (help)
         {
@@ -136,9 +168,16 @@ internal static class CommandParser
 
             try
             {
-                Compuse.Protocol.V1.DropFilesRequest message = Compuse.Protocol.V1.DropFilesRequest.Parser.ParseFrom(protoPayload);
+                Compuse.Protocol.V1.DropFilesRequest message =
+                    Compuse.Protocol.V1.DropFilesRequest.Parser.ParseFrom(protoPayload);
                 DropFilesRequest request = Compuse.Protocol.DropFilesRequestProtoMapper.FromProto(message);
-                return new ParsedCommand(showHelp: false, plan, proto: true, request, error: null);
+                return new ParsedCommand(
+                    showHelp: false,
+                    plan,
+                    proto: true,
+                    request,
+                    error: null,
+                    deadlineUtc);
             }
             catch (Exception ex) when (ex is Google.Protobuf.InvalidProtocolBufferException
                 or Compuse.Protocol.ProtocolContractException
@@ -167,20 +206,26 @@ internal static class CommandParser
         try
         {
             CorrelationId correlationId = correlation is null ? CorrelationId.New() : CorrelationId.Parse(correlation);
+            string destination = CliPaths.ResolveAbsolute(to);
             List<SourceItem> sources = new(files.Count);
             for (int index = 0; index < files.Count; index++)
             {
-                sources.Add(new SourceItem(new PhysicalFileSource(files[index])));
+                string source = CliPaths.ResolveAbsolute(files[index]);
+                sources.Add(new SourceItem(new PhysicalFileSource(source)));
             }
 
             DropFilesRequest request = DropFilesRequest.Create(
                 correlationId,
                 sources,
                 copy ? TransferEffect.Copy : TransferEffect.Move,
-                TargetSelector.FromFilesystemContainer(new FilesystemContainerTarget(to)));
-            return new ParsedCommand(showHelp: false, plan, proto: false, request, error: null);
+                TargetSelector.FromFilesystemContainer(new FilesystemContainerTarget(destination)),
+                deadlineUtc);
+            return new ParsedCommand(showHelp: false, plan, proto: false, request, error: null, deadlineUtc);
         }
-        catch (Exception ex) when (ex is ArgumentException or FormatException)
+        catch (Exception ex) when (ex is ArgumentException
+            or FormatException
+            or NotSupportedException
+            or PathTooLongException)
         {
             return Error(ex.Message);
         }
