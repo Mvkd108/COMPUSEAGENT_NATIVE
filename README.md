@@ -116,7 +116,7 @@ compuse drop-files --copy --timeout 30 --to C:\dst C:\src\a.txt
 compuse drop-files --proto
 ```
 
-Relative source and destination paths are resolved against the current directory before the request is constructed. `--plan` writes the route to stdout and does not mutate files. Execute writes `outcome=` / `correlation=` / optional `code=` plus `evidence=` and `artifact=` lines on stdout (or a Protobuf `OperationResult` envelope with `--proto`). Diagnostics go to stderr. Exit codes: `0` committed or successful plan, `1` invalid request, `2` refused, `3` failed, `4` indeterminate. `IFileOperation` runs on a dedicated foreground STA and is awaited asynchronously, so a post-dispatch deadline or Ctrl+C can return `indeterminate` without joining the Shell call. The STA still finishes and releases COM; it is not killed mid-copy.
+Relative source and destination paths are resolved against the current directory before the request is constructed. `--plan` writes the route to stdout and does not mutate files. Execute writes `outcome=` / `correlation=` / optional `code=` plus `evidence=` and `artifact=` lines on stdout (or a Protobuf `OperationResult` envelope with `--proto`). Protobuf stdin is limited to 4 MiB and oversized input is rejected before parsing. Diagnostics go to stderr. Exit codes: `0` committed or successful plan, `1` invalid request, `2` refused, `3` failed, `4` indeterminate. `IFileOperation` runs on a dedicated foreground STA and is awaited asynchronously, so a post-dispatch deadline or Ctrl+C can return `indeterminate` without joining the Shell call. The STA still finishes and releases COM; it is not killed mid-copy.
 
 ## Verification
 

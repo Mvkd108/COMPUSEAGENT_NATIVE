@@ -13,6 +13,9 @@ namespace Compuse.Cli;
 
 public static class CliApplication
 {
+    private const int MaxProtoPayloadBytes = 4 * 1024 * 1024;
+    private const int ProtoReadBufferBytes = 81920;
+
     public const int ExitOk = 0;
     public const int ExitInvalid = 1;
     public const int ExitRefused = 2;
@@ -44,7 +47,16 @@ public static class CliApplication
 
         if (mayNeedProto)
         {
-            protoPayload = ReadAll(stdin);
+            try
+            {
+                protoPayload = await ReadProtoPayloadAsync(stdin, cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidDataException ex)
+            {
+                stderr.WriteLine(ex.Message);
+                stderr.Write(HelpText());
+                return ExitInvalid;
+            }
         }
 
         ParsedCommand parsed = CommandParser.Parse(args, protoPayload);
@@ -174,10 +186,29 @@ public static class CliApplication
             _ => "unknown"
         };
 
-    private static byte[] ReadAll(Stream stdin)
+    private static async Task<byte[]> ReadProtoPayloadAsync(
+        Stream stdin,
+        CancellationToken cancellationToken)
     {
         using MemoryStream buffer = new();
-        stdin.CopyTo(buffer);
+        byte[] chunk = new byte[ProtoReadBufferBytes];
+        while (true)
+        {
+            int read = await stdin.ReadAsync(chunk, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            if (buffer.Length > MaxProtoPayloadBytes - read)
+            {
+                throw new InvalidDataException(
+                    $"Protobuf input exceeds the maximum size of {MaxProtoPayloadBytes} bytes.");
+            }
+
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
+
         return buffer.ToArray();
     }
 }

@@ -162,6 +162,19 @@ public sealed class CliApplicationTests
         Assert.AreEqual(request.CorrelationId, result.CorrelationId);
     }
 
+    [TestMethod]
+    public async Task OversizedProtoInputIsRejectedBeforeParsing()
+    {
+        byte[] payload = new byte[(4 * 1024 * 1024) + 1];
+        (int exit, byte[] stdout, string stderr) = await RunBytes(
+            ["drop-files", "--proto"],
+            payload);
+
+        Assert.AreEqual(CliApplication.ExitInvalid, exit);
+        Assert.AreEqual(0, stdout.Length);
+        StringAssert.Contains(stderr, "maximum size of 4194304 bytes");
+    }
+
     private static async Task<(int Exit, string Stdout, string Stderr)> Run(string[] args, byte[]? stdin = null)
     {
         (int exit, byte[] stdout, string stderr) = await RunBytes(args, stdin);
