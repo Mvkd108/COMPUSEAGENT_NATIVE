@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Filesystem.Tests</RootNamespace>
+        <AssemblyName>Compuse.Filesystem.Tests</AssemblyName>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="MSTest" />
+        <ProjectReference Include="..\..\src\Compuse.Filesystem\Compuse.Filesystem.csproj" />
+        <ProjectReference Include="..\..\src\Compuse.Requests\Compuse.Requests.csproj" />
+    </ItemGroup>
+</Project>

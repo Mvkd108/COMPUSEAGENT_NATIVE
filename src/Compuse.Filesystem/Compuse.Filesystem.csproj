@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Filesystem</RootNamespace>
+        <AssemblyName>Compuse.Filesystem</AssemblyName>
+        <OutputType>Library</OutputType>
+        <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Compuse.Discovery\Compuse.Discovery.csproj" />
+        <ProjectReference Include="..\Compuse.Routing\Compuse.Routing.csproj" />
+        <InternalsVisibleTo Include="Compuse.Filesystem.Tests" />
+    </ItemGroup>
+</Project>

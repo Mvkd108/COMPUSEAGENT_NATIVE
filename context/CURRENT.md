@@ -1,60 +1,71 @@
 # Current state
 
-Last updated: 2026-08-18
+Last updated: 2026-08-22
 
-## M001 — Repository bootstrap and executable contract foundation
+## M001–M004 — Contract and runtime foundation
 
-Status: `APPROVED` and committed.
+Status: `APPROVED`. Local `main` fast-forwarded to M004
+`56b35fcab253df3049aa514dd1e0e2c42bc122a1`. `origin/main` may still be at
+M003 until that merge is pushed.
 
-- Revision: `42e5d0ca368939d436f5d0a8cc25d82316dc1bb7` on `main`
-- SDK pin: `10.0.302` (`rollForward=disable`, `allowPrerelease=false`)
-- Projects: `Compuse.Contracts`, `Compuse.Contracts.Tests`
-- Correlation IDs reject surrounding whitespace around an otherwise valid GUID
-  `D` form (`Length != 36` before `Guid.TryParseExact`)
-- Independent verification: locked restore, Release 0 warnings, format
-  verify-no-changes, 80 tests passed / 0 failed / 0 skipped
+- SDK `10.0.302`
+- Contracts, Protobuf result/request, and `OperationRuntime` public types
+  were not modified.
 
-## M002 — Canonical Protobuf v1 operation-result contract
+## Track A — Filesystem `drop_files` prototype
 
-Status: `APPROVED` and committed.
+Status: implemented on `cursor/track-a-filesystem-prototype`, including a
+usable CLI loop (relative paths, evidence output, timeout, cancel-safe
+transfer). M012 repairs are in the working tree and request independent
+review; they are not an approval.
 
-- Revision: `0d8e66d538d019237268549c80bcdec753b9b9dd` on `main`
-- Schema: `proto/compuse/v1/operation_result.proto`, package `compuse.v1`,
-  C# namespace `Compuse.Protocol.V1`
-- Mapper: `OperationResultProtoMapper.ToProto` / `FromProto`
-- Packages: Google.Protobuf `3.35.1`, Grpc.Tools `2.83.0` (private),
-  MSTest `4.3.3` preserved
-- Generated C# lives only under ignored `obj/` (`OperationResult.cs`)
-- Canonical wire vector
-  `0a2461626364656630312d323334352d363738392d616263642d6566303132333435363738391004`
+- Prompts: `context/prompts/M005-FS-IMPLEMENTATION-PROMPT.md`,
+  `context/prompts/TRACK-A-VERTICAL.md`
+- Repair: architect roadmap M012 (async execution, advise integrity,
+  least-privilege discovery)
+- OLE gate: `context/OLE-IDROPTARGET-SPIKE.md`
+- Discovery: `Compuse.Discovery` (`WindowsFilesystemDiscovery`)
+- Router: `Compuse.Routing` (`DropFilesRouter`, refusal catalog)
+- Transfer: `Compuse.Filesystem` (`ITransferBackend.ExecuteAsync` on a
+  dedicated foreground STA with an `IFileOperationProgressSink` cancellation
+  sink)
+- Orchestration: `Compuse.DropFiles` (`DropFilesHandler` awaits the backend)
+- CLI: `Compuse.Cli` assembly name `compuse`
 
-## M003 — `drop_files` request contract and canonical request schema
+Prototype success: copy or move physical files into a real directory and
+return `committed` only after destination observation. Application-surface
+targets refuse with `unsupported_target_kind`. Overwrite is refused
+(`collision`). Multi-file preflight is all-or-nothing. Destination length
+mismatch after transfer is `indeterminate` with `integrity_mismatch`
+evidence. Uninspectable destinations after transfer are `failed` with
+`verification_unavailable` when no side effect was observed.
 
-Status: implemented in the working tree. Not independently reviewed. Not
-committed.
+CLI: relative paths resolve against the current directory. Execute stdout
+includes `evidence=` / `artifact=` lines. `--timeout <seconds>` sets the
+runtime deadline. Pre-cancelled tokens do not mutate. Ctrl+C or deadline
+after dispatch is `indeterminate` without waiting for `PerformOperations`;
+the STA transfer is not killed mid-copy.
 
-- Domain: `Compuse.Requests` (`DropFilesRequest`, physical-file sources, copy
-  and move, filesystem-container and application-surface targets)
-- Schema: `proto/compuse/v1/drop_files.proto`, package `compuse.v1`
-- Mapper: `DropFilesRequestProtoMapper.ToProto` / `FromProto`
-- No filesystem, Win32, discovery, routing, CLI, or native code
-- `Compuse.Contracts` public types were not modified
-- M001 lock files remain unchanged
-- Implementer verification: locked restore, Release 0 warnings, format
-  0 files, 13 request tests, 63 protocol tests, 156 solution tests passed /
-  0 failed / 0 skipped; canonical copy wire vector
-  `0a2461626364656630312d323334352d363738392d616263642d65663031323334353637383912100a0e0a0c433a5c7372635c612e7478741801220a0a080a06433a5c647374`
+Destination capability discovery opens with exactly `FILE_ADD_FILE` and
+creates no probe file. Failed `IFileOperation.Advise` skips flags, item
+creation, queue, and perform.
 
 ## Intentionally absent
 
-No runtime, CLI, native COM, C ABI, transport, GUI, Hyper-V, networking, CUA,
-or `drop_files` execution.
+No OLE application drop, private C ABI, GUI, Hyper-V, networking, CUA,
+installers, pointer/mouse fallback, or overwrite/recycle.
 
 ## Known operational notes
 
 - SDK `10.0.302` is installed user-locally under
-  `%LOCALAPPDATA%\Microsoft\dotnet`. Shells that prefer
-  `C:\Program Files\dotnet\dotnet.exe` (8.x) will fail verification until that
-  SDK is on `PATH`.
-- MSTest transitively restores a test-only telemetry extension.
-  `Compuse.Contracts` has no package dependencies.
+  `%LOCALAPPDATA%\Microsoft\dotnet`.
+- Track A Windows projects target `net10.0-windows`.
+- `IFileOperation` UI is suppressed. Elevation prompts are not used; access
+  denied becomes a non-committed outcome.
+- Runtime cancellation or deadline can win the first-terminal-result race and
+  report `indeterminate` while the Shell operation finishes. The process waits
+  for the foreground STA thread rather than aborting COM.
+
+Verified on SDK `10.0.302`: Release 0 warnings, format 0 changes, 258 tests
+passed (was 250). Real copy/move tests observed destination payloads and
+source removal.
