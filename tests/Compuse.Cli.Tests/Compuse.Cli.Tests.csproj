@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Cli.Tests</RootNamespace>
+        <AssemblyName>Compuse.Cli.Tests</AssemblyName>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="MSTest" />
+        <PackageReference Include="Google.Protobuf" />
+        <ProjectReference Include="..\..\src\Compuse.Cli\Compuse.Cli.csproj" />
+        <ProjectReference Include="..\..\src\Compuse.Protocol\Compuse.Protocol.csproj" />
+        <ProjectReference Include="..\..\src\Compuse.Requests\Compuse.Requests.csproj" />
+    </ItemGroup>
+</Project>

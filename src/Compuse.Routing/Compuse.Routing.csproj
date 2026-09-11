@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RootNamespace>Compuse.Routing</RootNamespace>
+        <AssemblyName>Compuse.Routing</AssemblyName>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
+        <ProjectReference Include="..\Compuse.Discovery\Compuse.Discovery.csproj" />
+        <ProjectReference Include="..\Compuse.Requests\Compuse.Requests.csproj" />
+    </ItemGroup>
+</Project>

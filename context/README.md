@@ -8,6 +8,7 @@ this order before inspecting the implementation:
 3. `DECISIONS.md` — architectural decisions that should not be rediscovered.
 4. `NEXT.md` — ordered work with acceptance criteria.
 5. The newest entry under `sessions/` — the exact continuation point.
+6. `prompts/` — decision-complete implementation prompts for the current slice.
 
 ## Handoff rule
 

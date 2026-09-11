@@ -6,5 +6,7 @@
         <PackageVersion Include="Google.Protobuf" Version="3.35.1" />
         <PackageVersion Include="Grpc.Tools" Version="2.83.0" />
         <PackageVersion Include="MSTest" Version="4.3.3" />
+        <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+        <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     </ItemGroup>
 </Project>
