@@ -14,4 +14,13 @@ public static class DropFilesRefusalCode
     public const string AmbiguousTarget = "ambiguous_target";
     public const string VerificationUnavailable = "verification_unavailable";
     public const string StaleIdentity = "stale_identity";
+    public const string TargetNotFound = "target_not_found";
+    public const string TargetIdentityChanged = "target_identity_changed";
+    public const string SingleSourceRequired = "single_source_required";
+    public const string UnsupportedApplicationRecipe = "unsupported_application_recipe";
+    public const string UiAutomationUnsupported = "ui_automation_unsupported";
+    public const string ImportDialogFailed = "import_dialog_failed";
+    public const string TargetExited = "target_exited";
+    public const string SourceRemovalFailed = "source_removal_failed";
+    public const string VerificationFailed = "verification_failed";
 }

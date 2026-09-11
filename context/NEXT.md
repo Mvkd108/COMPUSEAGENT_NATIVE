@@ -1,23 +1,40 @@
 # Next steps
 
-1. Independent review of Track A plus M012 (async backend, failed-Advise
-   abort, `FILE_ADD_FILE` probe) on `cursor/track-a-filesystem-prototype`.
-   Work is uncommitted.
-2. When explicitly requested, commit this branch and merge local `main`
-   (M004 `56b35fc`) plus Track A to the remote.
-3. After Track A/M012 is the committed baseline, prepare M013 Track A
-   qualification (`eng/verify-track-a.ps1` and CLI subprocess tests). Do not
-   change product behavior in M013.
-4. After that checkpoint, run the OLE spike documented in
-   `context/OLE-IDROPTARGET-SPIKE.md` (roadmap M014). Do not start M007 or
-   M009 until that spike proves a documented no-pointer `IDropTarget` path.
-5. Remaining original-queue work after the spike:
-   - Full window identity discovery (the rest of M005)
-   - M015-N filesystem-only freeze if M014 is `NO_GO`, or M015-G–M017-G if
-     `GO`
-   - M018 reliability/security hardening
-   - M019 release qualification
-   - FINAL integrated-system review
+The reusable Windows foundation (filesystem, Notepad recipe, Cua Driver
+adapter) is complete, reviewed, and qualified. The independent Track A + Track
+B + Track C review is done and every confirmed defect in scope was fixed.
+Remaining work is Compuse-specific differentiation, application recipes,
+reliability, and documented edge cases — not generic capture or input
+functions already supplied by the adopted dependencies.
 
-Do not resume Hyper-V, GUI, cloud, networking, or CUA vendoring. Do not add
-a mouse or focus fallback.
+1. When explicitly requested, commit and merge to `main`, then push. Work is
+   uncommitted on `cursor/track-a-filesystem-prototype`.
+2. First Compuse-specific feature on this foundation: the decision-complete
+   `verify_after_action` implementation prompt is prepared at
+   `context/prompts/VERIFY-AFTER-ACTION.md`. It runs one driver action, then
+   reads back application-owned state (document text, list selection, displayed
+   value) and returns `committed` only on an independent observation,
+   `indeterminate` on mismatch, and `refused` when the driver reports
+   `background_unavailable`/stale state before dispatch.
+3. Second application recipe behind the recipe catalog (for example a
+   documented `IFileDialog`-based importer or Notepad "Save As" verification),
+   keeping recipe-specific labels/IDs in the recipe and generic primitives
+   generic.
+4. Wire the routing policy into one operation end-to-end (documented API →
+   Compuse semantic backend → UIA → Cua Driver background → visual →
+   explicitly-permitted foreground) and record the chosen route in evidence.
+5. Browser workflows against an existing signed-in profile only after a product
+   decision authorizes `GrantExistingBrowserProfile`
+   (`--grant existing-profile` is an explicit capability, never a default). The
+   disposable driver-owned profile flow is already qualified.
+6. Qualification matrix maintenance: record rows for File Explorer (Win32),
+   Calculator (WinUI), Notepad (packaged, disposable only), Edge/Chrome
+   (Chromium, disposable profile), and an Electron app when one is installed;
+   mark unavailable rows "untested" rather than fabricating evidence.
+7. M013 qualification harness (`eng/verify-track-a.ps1`) extended to the
+   app-surface and driver workflows; M019 release qualification; FINAL
+   integrated-system review.
+
+Do not resume Hyper-V, GUI, cloud, networking, or UFO/Computer-Use-Agent
+vendoring. Do not add a mouse or focus fallback. Do not copy Cua Driver
+source; consume the pinned Windows binary through its public MCP interface.

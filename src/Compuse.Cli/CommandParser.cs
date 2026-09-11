@@ -55,6 +55,11 @@ internal static class CommandParser
         bool copy = false;
         bool move = false;
         string? to = null;
+        string? app = null;
+        string? windowClass = null;
+        string? windowTitle = null;
+        ulong? hwndHint = null;
+        uint? processIdHint = null;
         string? correlation = null;
         int? timeoutSeconds = null;
         List<string> files = [];
@@ -99,6 +104,83 @@ internal static class CommandParser
                 }
 
                 to = tokens[++index];
+                continue;
+            }
+
+            if (token == "--app")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --app.");
+                }
+
+                app = tokens[++index];
+                continue;
+            }
+
+            if (token == "--window-class")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --window-class.");
+                }
+
+                windowClass = tokens[++index];
+                continue;
+            }
+
+            if (token == "--window-title")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --window-title.");
+                }
+
+                windowTitle = tokens[++index];
+                continue;
+            }
+
+            if (token == "--hwnd")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --hwnd.");
+                }
+
+                string raw = tokens[++index];
+                string digits = raw;
+                NumberStyles styles = NumberStyles.Integer;
+                if (raw.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                {
+                    digits = raw[2..];
+                    styles = NumberStyles.HexNumber;
+                }
+
+                if (!ulong.TryParse(digits, styles, CultureInfo.InvariantCulture, out ulong parsed)
+                    || parsed == 0)
+                {
+                    return Error("--hwnd must be a nonzero unsigned integer window handle.");
+                }
+
+                hwndHint = parsed;
+                continue;
+            }
+
+            if (token == "--pid")
+            {
+                if (index + 1 >= tokens.Count)
+                {
+                    return Error("Missing value for --pid.");
+                }
+
+                string raw = tokens[++index];
+                if (!uint.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out uint parsed)
+                    || parsed == 0)
+                {
+                    return Error("--pid must be a nonzero unsigned integer process id.");
+                }
+
+                processIdHint = parsed;
                 continue;
             }
 
@@ -156,9 +238,10 @@ internal static class CommandParser
 
         if (proto)
         {
-            if (copy || move || to is not null || files.Count > 0 || correlation is not null)
+            if (copy || move || to is not null || app is not null || windowClass is not null || windowTitle is not null
+                || hwndHint is not null || processIdHint is not null || files.Count > 0 || correlation is not null)
             {
-                return Error("--proto cannot be combined with --copy, --move, --to, --correlation, or source files.");
+                return Error("--proto cannot be combined with --copy, --move, --to, --app, window hints, --correlation, or source files.");
             }
 
             if (protoPayload is null || protoPayload.Length == 0)
@@ -193,9 +276,14 @@ internal static class CommandParser
             return Error("Specify exactly one of --copy or --move.");
         }
 
-        if (string.IsNullOrWhiteSpace(to))
+        if ((to is null) == (app is null))
         {
-            return Error("--to is required.");
+            return Error("--to is required when --app is not used. Specify exactly one of --to <directory> or --app <process-image-name>.");
+        }
+
+        if (app is null && (windowClass is not null || windowTitle is not null || hwndHint is not null || processIdHint is not null))
+        {
+            return Error("Window hints require --app.");
         }
 
         if (files.Count == 0)
@@ -206,7 +294,18 @@ internal static class CommandParser
         try
         {
             CorrelationId correlationId = correlation is null ? CorrelationId.New() : CorrelationId.Parse(correlation);
-            string destination = CliPaths.ResolveAbsolute(to);
+            TargetSelector target;
+            if (app is not null)
+            {
+                target = TargetSelector.FromApplicationSurface(
+                    new ApplicationSurfaceTarget(app, windowClass, windowTitle, hwndHint, processIdHint));
+            }
+            else
+            {
+                string destination = CliPaths.ResolveAbsolute(to!);
+                target = TargetSelector.FromFilesystemContainer(new FilesystemContainerTarget(destination));
+            }
+
             List<SourceItem> sources = new(files.Count);
             for (int index = 0; index < files.Count; index++)
             {
@@ -218,7 +317,7 @@ internal static class CommandParser
                 correlationId,
                 sources,
                 copy ? TransferEffect.Copy : TransferEffect.Move,
-                TargetSelector.FromFilesystemContainer(new FilesystemContainerTarget(destination)),
+                target,
                 deadlineUtc);
             return new ParsedCommand(showHelp: false, plan, proto: false, request, error: null, deadlineUtc);
         }

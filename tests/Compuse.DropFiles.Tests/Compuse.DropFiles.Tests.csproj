@@ -8,6 +8,7 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="MSTest" />
+        <ProjectReference Include="..\..\src\Compuse.ApplicationSurface\Compuse.ApplicationSurface.csproj" />
         <ProjectReference Include="..\..\src\Compuse.DropFiles\Compuse.DropFiles.csproj" />
         <ProjectReference Include="..\..\src\Compuse.Runtime\Compuse.Runtime.csproj" />
     </ItemGroup>

@@ -3,6 +3,15 @@
 Track A does not implement M007 (native ABI) or M009 (OLE application drop).
 This note is the architecture gate, not an implementation.
 
+Status 2026-09-11: Track B implements a separate, honest application-surface
+import path for the Windows 11 Notepad recipe using UI Automation
+(`Compuse.ApplicationSurface`, see `DECISIONS.md`). That path is a documented
+UI Automation file-dialog import and is never reported as an OLE drop. Track C
+adds a generic computer-control backend (TryCua Cua Driver, see
+`DECISIONS.md`) that performs background semantic input and capture; it does
+not implement OLE drops either. This OLE gate still governs any future true
+`IDropTarget` drop and is unchanged.
+
 ## Why OLE is deferred
 
 Filesystem-container transfers have a documented non-input mechanism: `IFileOperation`.

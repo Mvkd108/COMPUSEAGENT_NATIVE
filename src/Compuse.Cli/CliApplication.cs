@@ -1,4 +1,5 @@
 using System.Text;
+using Compuse.ApplicationSurface;
 using Compuse.Contracts;
 using Compuse.Discovery;
 using Compuse.DropFiles;
@@ -75,7 +76,11 @@ public static class CliApplication
 
         DropFilesRequest request = parsed.Request!;
         WindowsFilesystemDiscovery discovery = new();
-        DropFilesHandler handler = new(discovery, new FilesystemTransferBackend(discovery));
+        DropFilesHandler handler = new(
+            discovery,
+            new FilesystemTransferBackend(discovery),
+            new WindowsWindowDiscovery(),
+            new ApplicationRecipeCatalog(new NotepadImportRecipe()));
         if (parsed.PlanOnly)
         {
             RouteDecision decision = handler.Plan(request, cancellationToken);
@@ -85,10 +90,11 @@ public static class CliApplication
 
         await using OperationRuntime runtime = new(new SystemOperationClock());
         runtime.Register(handler);
+        DateTimeOffset? deadline = parsed.DeadlineUtc ?? request.DeadlineUtc;
         OperationResult result = await runtime.RunAsync(
             request,
             request.CorrelationId,
-            parsed.DeadlineUtc ?? request.DeadlineUtc,
+            deadline,
             cancellationToken);
         WriteResult(stdout, stderr, result, parsed.Proto);
         return result.Outcome switch
@@ -105,9 +111,11 @@ public static class CliApplication
         """
         Usage:
           compuse drop-files --copy|--move --to <dir> [--plan] [--timeout <seconds>] [--correlation <guid>] <file>...
+          compuse drop-files --copy|--move --app <process-image-name> [--window-class <class>] [--window-title <title>] [--pid <pid>] [--hwnd <hwnd>] [--plan] [--timeout <seconds>] [--correlation <guid>] <file>...
           compuse drop-files --proto [--plan] [--timeout <seconds>]
 
         Source and destination paths may be relative; they are resolved against the current directory.
+        --app imports the source file into a matching window of the named application using UI Automation.
         Outcomes are written to stdout as key=value lines, including evidence after execute.
         Diagnostics are written to stderr.
         """ + Environment.NewLine;
@@ -128,6 +136,15 @@ public static class CliApplication
                 writer.WriteLine($"source={item.SourcePath}");
                 writer.WriteLine($"destination_file={item.DestinationPath}");
             }
+        }
+        else if (decision.ApplicationPlan is ApplicationImportPlan applicationPlan)
+        {
+            writer.WriteLine("outcome=plan");
+            writer.WriteLine($"backend={applicationPlan.BackendId}");
+            writer.WriteLine($"effect={applicationPlan.Effect.ToString().ToLowerInvariant()}");
+            writer.WriteLine($"verification={applicationPlan.VerificationStrategy}");
+            writer.WriteLine($"window={applicationPlan.Target.ProcessId}:{applicationPlan.Target.WindowTitle}");
+            writer.WriteLine($"source={applicationPlan.SourcePath}");
         }
         else
         {

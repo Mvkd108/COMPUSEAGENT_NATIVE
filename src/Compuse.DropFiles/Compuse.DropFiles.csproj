@@ -6,6 +6,7 @@
         <OutputType>Library</OutputType>
     </PropertyGroup>
     <ItemGroup>
+        <ProjectReference Include="..\Compuse.ApplicationSurface\Compuse.ApplicationSurface.csproj" />
         <ProjectReference Include="..\Compuse.Contracts\Compuse.Contracts.csproj" />
         <ProjectReference Include="..\Compuse.Discovery\Compuse.Discovery.csproj" />
         <ProjectReference Include="..\Compuse.Filesystem\Compuse.Filesystem.csproj" />
